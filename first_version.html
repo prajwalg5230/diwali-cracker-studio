@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>शुभ दीपावली | Happy Diwali 2026 - Festival of Lights</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Poppins:wght@300;400;600;700;800&family=Rozha+One&family=Yatra+One&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --gold-1: #ffe066;
+            --gold-2: #f59e0b;
+            --gold-3: #d97706;
+            --gold-gradient: linear-gradient(135deg, #fff3b0 0%, #ffd700 40%, #ff8c00 100%);
+            --crimson: #991b1b;
+            --deep-royal: #0a0614;
+            --card-glass: rgba(22, 13, 39, 0.75);
+            --border-gold: rgba(255, 215, 0, 0.35);
+            --glow-gold: 0 0 25px rgba(255, 215, 0, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--deep-royal);
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Fullscreen Fireworks Canvas */
+        #fireworksCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: auto;
+            cursor: crosshair;
+        }
+
+        /* Ambient Stars & Glow */
+        .sky-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 20%, rgba(245, 158, 11, 0.15) 0%, rgba(10, 6, 20, 0.95) 75%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Top Action Bar (Floating HUD) */
+        .top-hud {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(15, 9, 28, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-gold);
+            padding: 8px 16px;
+            border-radius: 40px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            max-width: 95vw;
+        }
+
+        .hud-btn {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            padding: 7px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+
+        .hud-btn:hover, .hud-btn.active {
+            background: var(--gold-gradient);
+            color: #000;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            transform: translateY(-1px);
+        }
+
+        /* Main Container */
+        .main-wrapper {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 80px 15px 40px;
+            pointer-events: none; /* Let canvas capture sky clicks */
+        }
+
+        .interactive-zone {
+            pointer-events: auto;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        /* Royal Header Title */
+        .hero-banner {
+            text-align: center;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .sub-shloka {
+            font-family: 'Rozha One', serif;
+            font-size: 1.1rem;
+            color: #ffd700;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .main-title {
+            font-family: 'Yatra One', cursive;
+            font-size: 3.5rem;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 25px rgba(255, 140, 0, 0.6));
+            line-height: 1.15;
+            letter-spacing: 1px;
+        }
+
+        .eng-title {
+            font-family: 'Cinzel Decorative', cursive;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            margin-top: 6px;
+        }
+
+        .hero-instruction {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: #fcd34d;
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px dashed rgba(255, 215, 0, 0.4);
+            padding: 6px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            backdrop-filter: blur(5px);
+            animation: pulse 2s infinite;
+        }
+
+        /* 🪔 Traditional Earthen Diyas Arena */
+        .diya-ceremony-card {
+            width: 100%;
+            background: var(--card-glass);
+            border: 1px solid var(--border-gold);
+            border-radius: 28px;
+            padding: 24px 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            backdrop-filter: blur(15px);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header-tag {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffd700;
+            font-weight: 700;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .card-sub {
+            font-size: 0.85rem;
+            color: #d1d5db;
+            margin-bottom: 20px;
+        }
+
+        .diyas-row {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 10px 0;
+        }
+
+        .diya-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .diya-item:hover {
+            transform: scale(1.12);
+        }
+
+        /* Diya Flame Simulation */
+        .diya-flame {
+            width: 16px;
+            height: 28px;
+            background: radial-gradient(ellipse at bottom, #ffffff 0%, #ffff55 25%, #ff8800 65%, rgba(255,0,0,0) 100%);
+            border-radius: 50% 50% 35% 35% / 80% 80% 30% 30%;
+            position: relative;
+            margin-bottom: -4px;
+            opacity: 0;
+            transform: scale(0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 0 10px #ffaa00) drop-shadow(0 0 20px #ff4400);
+        }
+
+        .diya-item.lit .diya-flame {
+            opacity: 1;
+            transform: scale(1);
+            animation: flicker 0.15s infinite alternate ease-in-out, flameWave 1.2s infinite ease-in-out;
+        }
+
+        /* Diya Clay Pot Base (SVG Crafted) */
+        .diya-pot {
+            width: 58px;
+            height: 30px;
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
+        }
+
+        .diya-number {
+            font-size: 0.7rem;
+            color: #fcd34d;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+        /* 🎆 Patakha Simulator Zone (Tabs & Controls) */
+        .crackers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+
+        .cracker-btn {
+            background: linear-gradient(145deg, rgba(30, 20, 50, 0.8), rgba(15, 9, 28, 0.9));
+            border: 1px solid var(--border-gold);
+            border-radius: 18px;
+            padding: 16px 10px;
+            text-align: center;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cracker-btn i {
+            font-size: 1.8rem;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .cracker-btn span {
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .cracker-btn small {
+            font-size: 0.68rem;
+            color: #9ca3af;
+        }
+
+        .cracker-btn:hover {
+            transform: translateY(-4px);
+            border-color: #ffd700;
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+            background: linear-gradient(145deg, rgba(50, 30, 80, 0.9), rgba(25, 15, 45, 0.95));
+        }
+
+        .cracker-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* 💌 Greeting Card Generator Section */
+        .greeting-card-box {
+            width: 100%;
+            background: var(--card-glass);
+            border: 1px solid var(--border-gold);
+            border-radius: 28px;
+            padding: 26px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            backdrop-filter: blur(15px);
+            text-align: center;
+        }
+
+        .greeting-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .greeting-input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 16px;
+            border: 2px solid var(--border-gold);
+            background: rgba(10, 6, 20, 0.8);
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .greeting-input:focus {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-generate {
+            padding: 14px 22px;
+            background: var(--gold-gradient);
+            color: #000;
+            border: none;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Resulting Royal Greeting Card Modal/Display */
+        .greeting-preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 2, 10, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .greeting-preview-modal.show {
+            display: flex;
+        }
+
+        .royal-card {
+            background: radial-gradient(circle at center, #2e1045 0%, #150624 85%);
+            border: 3px solid #ffd700;
+            border-radius: 24px;
+            padding: 35px 25px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 30px rgba(255, 215, 0, 0.15);
+        }
+
+        .royal-card-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: #ffd700;
+            border: 1px solid rgba(255,215,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .royal-card-close:hover { background: #ffd700; color: #000; }
+
+        .royal-sender {
+            font-family: 'Rozha One', serif;
+            font-size: 1.6rem;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255,215,0,0.5);
+            margin: 10px 0;
+        }
+
+        .royal-message {
+            font-size: 0.95rem;
+            color: #fef08a;
+            line-height: 1.6;
+            margin: 15px 0;
+            font-style: italic;
+        }
+
+        .card-actions-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .btn-share-wa {
+            background: #25D366;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        /* 🪙 Dhan Varsha Coins Animation */
+        .coin-particle {
+            position: fixed;
+            width: 32px;
+            height: 32px;
+            background: radial-gradient(circle at 35% 35%, #fffbba 0%, #ffd700 45%, #b45309 100%);
+            border-radius: 50%;
+            border: 1.5px solid #fff;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            z-index: 60;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #78350f;
+            font-weight: 900;
+        }
+
+        /* Animations */
+        @keyframes flicker {
+            0% { transform: scale(1) rotate(-1deg); }
+            100% { transform: scale(1.08) rotate(1deg); }
+        }
+
+        @keyframes flameWave {
+            0%, 100% { height: 28px; }
+            50% { height: 32px; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.85; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.03); }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: rgba(255, 215, 0, 0.7);
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 600px) {
+            .main-title { font-size: 2.5rem; }
+            .top-hud { padding: 6px 12px; gap: 6px; }
+            .hud-btn { padding: 5px 10px; font-size: 0.72rem; }
+            .diya-pot { width: 44px; height: 24px; }
+            .diya-flame { width: 14px; height: 24px; }
+            .diyas-row { gap: 6px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Glow Background -->
+    <div class="sky-glow"></div>
+
+    <!-- Interactive WebGL/Canvas Fireworks & Crackers Engine -->
+    <canvas id="fireworksCanvas"></canvas>
+
+    <!-- Top Floating HUD Controls -->
+    <header class="top-hud">
+        <button class="hud-btn active" id="btnAudioToggle" title="Audio Celebration FX">
+            <i class="fas fa-volume-high"></i> <span>Sound FX: ON</span>
+        </button>
+        <button class="hud-btn" id="btnAutoFireworks" title="Continuous Sky Celebration">
+            <i class="fas fa-wand-magic-sparkles"></i> <span>Auto Sky: OFF</span>
+        </button>
+        <button class="hud-btn" id="btnDhanVarsha" title="Shower of Gold & Prosperity">
+            <i class="fas fa-coins"></i> <span>धन वर्षा</span>
+        </button>
+    </header>
+
+    <!-- Main Content Container -->
+    <div class="main-wrapper">
+        <div class="interactive-zone">
+            
+            <!-- Hero Header -->
+            <div class="hero-banner">
+                <div class="sub-shloka">॥ ॐ महालक्ष्म्यै नमः ॥</div>
+                <h1 class="main-title">शुभ दीपावली</h1>
+                <div class="eng-title">HAPPY DIWALI 2026</div>
+                <div class="hero-instruction"><i class="fas fa-bullseye"></i> कहीं भी आकाश में क्लिक करें और आतिशबाज़ी चलाएं!</div>
+            </div>
+
+            <!-- Diya Lighting Ceremony Card -->
+            <div class="diya-ceremony-card">
+                <div class="card-header-tag"><i class="fas fa-fire"></i> दीप प्रज्ज्वलन महोत्सव</div>
+                <div class="card-sub">दीयों पर क्लिक करके उन्हें प्रज्ज्वलित करें और घर-आँगन रोशन करें!</div>
+                
+                <div class="diyas-row" id="diyasContainer">
+                    <!-- 7 Sacred Diyas generated dynamically -->
+                </div>
+            </div>
+
+            <!-- Patakha Arena (Cracker Simulator) -->
+            <div class="diya-ceremony-card">
+                <div class="card-header-tag"><i class="fas fa-sparkles"></i> आतिशबाज़ी अखाड़ा (Cracker Arena)</div>
+                <div class="card-sub">अपने मनपसंद पटाखे चुनें और डिजिटल पर्यावरण-अनुकूल दिवाली मनाएं!</div>
+
+                <div class="crackers-grid">
+                    <button class="cracker-btn" onclick="launchCracker('rocket')">
+                        <i class="fas fa-rocket"></i>
+                        <span>रॉकेट (Rocket)</span>
+                        <small>Sky Explosion</small>
+                    </button>
+                    <button class="cracker-btn" onclick="launchCracker('anar')">
+                        <i class="fas fa-volcano"></i>
+                        <span>अनार (Flowerpot)</span>
+                        <small>Golden Fountain</small>
+                    </button>
+                    <button class="cracker-btn" onclick="launchCracker('chakri')">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                        <span>चकरी (Spinner)</span>
+                        <small>Whirling Vortex</small>
+                    </button>
+                    <button class="cracker-btn" onclick="launchCracker('barrage')">
+                        <i class="fas fa-meteor"></i>
+                        <span>12-शॉट (Sky Barrage)</span>
+                        <small>Multi-Color Burst</small>
+                    </button>
+                    <button class="cracker-btn" onclick="launchCracker('phuljhadi')">
+                        <i class="fas fa-wand-sparkles"></i>
+                        <span>फुलझड़ी (Sparkler)</span>
+                        <small>Shimmering Spark</small>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Greeting Card Generator -->
+            <div class="greeting-card-box">
+                <div class="card-header-tag"><i class="fas fa-envelope-open-text"></i> दीपावली शुभकामना कार्ड बनाएं</div>
+                <div class="card-sub">अपना या अपने परिवार का नाम लिखें और परिजनों को WhatsApp पर बधाई भेजें:</div>
+
+                <div class="greeting-input-group">
+                    <input type="text" id="senderNameInput" class="greeting-input" placeholder="अपना नाम लिखें (उदा. प्रज्वल)...">
+                    <button class="btn-generate" id="btnMakeCard"><i class="fas fa-gift"></i> कार्ड बनाएं</button>
+                </div>
+            </div>
+
+            <footer class="footer">
+                ✨ Deepawali Mahotsav 2026 • May Goddess Lakshmi & Lord Ganesha Shower Peace & Prosperity ✨
+            </footer>
+
+        </div>
+    </div>
+
+    <!-- Royal Greeting Card Modal -->
+    <div class="greeting-preview-modal" id="greetingModal">
+        <div class="royal-card">
+            <button class="royal-card-close" id="btnCloseModal"><i class="fas fa-times"></i></button>
+            <div style="color: #ffd700; font-size: 1.8rem; margin-bottom: 5px;">🪔 卐 🪔</div>
+            <div class="sub-shloka">दीपावली की हार्दिक शुभकामनाएं</div>
+            <div class="royal-sender" id="cardSenderDisplay">प्रज्वल एवं परिवार</div>
+            <p class="royal-message">
+                "दीयों की रोशनी से जगमगाए आपका संसार, सुख, समृद्धि, शांति और उत्तम स्वास्थ्य लाए यह पावन त्यौहार!"
+            </p>
+            <div class="card-actions-row">
+                <a href="#" class="btn-share-wa" id="btnShareWhatsApp" target="_blank">
+                    <i class="fab fa-whatsapp"></i> WhatsApp पर भेजें
+                </a>
+                <button class="hud-btn" onclick="triggerGrandCelebration()">
+                    <i class="fas fa-wand-magic-sparkles"></i> महा उत्सव
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO & FIREWORKS PHYSICS ENGINE SCRIPT -->
+    <script>
+        // ========================================================
+        // 1. WEB AUDIO SYNTHESIZER (ZERO DELAY, 100% OFFLINE)
+        // ========================================================
+        class SoundFXEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // Rocket Launch Rising Pitch Whoosh
+            playRocket() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(700, now + 0.5);
+
+                gain.gain.setValueAtTime(0.01, now);
+                gain.gain.linearRampToValueAtTime(0.12, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+
+            // Deep Boom Explosion + Sparkle Noise
+            playExplosion(isLarge = false) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const bufferSize = this.ctx.sampleRate * (isLarge ? 0.7 : 0.4);
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(isLarge ? 400 : 600, now);
+                filter.frequency.exponentialRampToValueAtTime(80, now + (isLarge ? 0.7 : 0.4));
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(isLarge ? 0.4 : 0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + (isLarge ? 0.7 : 0.4));
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            }
+
+            // High Frequency Crackle / Phuljhadi
+            playCrackle() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1200 + Math.random() * 800, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            // Divine Bell Chime for Diya Lighting
+            playBell() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                [784, 1046.5, 1318.5].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+                    gain.gain.setValueAtTime(0.15, now + idx * 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.04);
+                    osc.stop(now + 1.2);
+                });
+            }
+
+            // Gold Coin Clink
+            playCoin() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1800 + Math.random() * 400, now);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        }
+
+        const sound = new SoundFXEngine();
+
+        // ========================================================
+        // 2. HIGH-PERFORMANCE 60FPS FIREWORKS CANVAS ENGINE
+        // ========================================================
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const COLOR_PALETTES = [
+            ['#ffd700', '#ffaa00', '#ff4500', '#ffffff'], // Gold Royal
+            ['#ff0055', '#ff44aa', '#ffdd00', '#ffffff'], // Crimson Rose
+            ['#00ffcc', '#0099ff', '#7700ff', '#ffffff'], // Cyber Peacock
+            ['#39ff14', '#00ff88', '#ffff00', '#ffffff'], // Emerald Spark
+            ['#ff8800', '#ff0033', '#ffd700', '#ffffff'], // Deep Saffron
+            ['#ffffff', '#fff3b0', '#e0e7ff', '#ffd700']  // Pure Diamond
+        ];
+
+        class Particle {
+            constructor(x, y, color, velocityX, velocityY, friction = 0.96, gravity = 0.06, decay = 0.015) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocityX = velocityX;
+                this.velocityY = velocityY;
+                this.friction = friction;
+                this.gravity = gravity;
+                this.decay = decay;
+                this.alpha = 1;
+                this.trail = [];
+                this.trailLength = 4;
+            }
+
+            update() {
+                this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
+                if (this.trail.length > this.trailLength) this.trail.shift();
+
+                this.velocityX *= this.friction;
+                this.velocityY *= this.friction;
+                this.velocityY += this.gravity;
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.alpha -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2.2;
+                ctx.globalAlpha = Math.max(0, this.alpha);
+
+                if (this.trail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Rocket {
+            constructor(startX, startY, targetX, targetY) {
+                this.x = startX;
+                this.y = startY;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.distance = Math.hypot(targetX - startX, targetY - startY);
+                this.angle = Math.atan2(targetY - startY, targetX - startX);
+                this.speed = 12;
+                this.velocityX = Math.cos(this.angle) * this.speed;
+                this.velocityY = Math.sin(this.angle) * this.speed;
+                this.trail = [];
+                this.alive = true;
+                this.color = '#ffd700';
+                sound.playRocket();
+            }
+
+            update() {
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 5) this.trail.shift();
+
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                const curDist = Math.hypot(this.targetX - this.x, this.targetY - this.y);
+                if (curDist < 20 || this.y <= this.targetY) {
+                    this.alive = false;
+                    explodeAt(this.targetX, this.targetY);
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                if (this.trail.length > 0) {
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let p of this.trail) ctx.lineTo(p.x, p.y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        const particles = [];
+        const rockets = [];
+
+        function explodeAt(x, y, customCount = 90) {
+            sound.playExplosion(customCount > 100);
+            const palette = COLOR_PALETTES[Math.floor(Math.random() * COLOR_PALETTES.length)];
+            const count = customCount;
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 1;
+                const color = palette[Math.floor(Math.random() * palette.length)];
+                particles.push(new Particle(
+                    x, y, color,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    0.95, 0.05, Math.random() * 0.015 + 0.01
+                ));
+            }
+        }
+
+        // Click on sky to launch rocket
+        canvas.addEventListener('pointerdown', (e) => {
+            rockets.push(new Rocket(e.clientX, canvas.height, e.clientX, e.clientY));
+        });
+
+        // Main Animation Loop
+        function loop() {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Rockets
+            for (let i = rockets.length - 1; i >= 0; i--) {
+                rockets[i].update();
+                rockets[i].draw(ctx);
+                if (!rockets[i].alive) rockets.splice(i, 1);
+            }
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw(ctx);
+                if (particles[i].alpha <= 0) particles.splice(i, 1);
+            }
+
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+
+        // ========================================================
+        // 3. CRACKER ZONE SPECIAL EFFECTS
+        // ========================================================
+        function launchCracker(type) {
+            const centerX = canvas.width / 2;
+            const bottomY = canvas.height - 40;
+
+            if (type === 'rocket') {
+                const tx = Math.random() * (canvas.width * 0.7) + (canvas.width * 0.15);
+                const ty = Math.random() * (canvas.height * 0.45) + 80;
+                rockets.push(new Rocket(tx + (Math.random() * 60 - 30), canvas.height, tx, ty));
+            } 
+            else if (type === 'anar') {
+                // Anar Flowerpot Fountain
+                sound.playRocket();
+                for (let i = 0; i < 180; i++) {
+                    setTimeout(() => {
+                        sound.playCrackle();
+                        for (let j = 0; j < 5; j++) {
+                            const angle = -Math.PI / 2 + (Math.random() * 0.7 - 0.35);
+                            const speed = Math.random() * 11 + 6;
+                            const color = Math.random() > 0.4 ? '#ffd700' : '#ffffff';
+                            particles.push(new Particle(
+                                centerX + (Math.random() * 20 - 10),
+                                bottomY,
+                                color,
+                                Math.cos(angle) * speed,
+                                Math.sin(angle) * speed,
+                                0.94, 0.12, 0.02
+                            ));
+                        }
+                    }, i * 25);
+                }
+            } 
+            else if (type === 'chakri') {
+                // Chakri Whirl
+                let currentAngle = 0;
+                for (let i = 0; i < 120; i++) {
+                    setTimeout(() => {
+                        sound.playCrackle();
+                        currentAngle += 0.4;
+                        for (let k = 0; k < 4; k++) {
+                            const a = currentAngle + (k * Math.PI / 2);
+                            const speed = Math.random() * 6 + 4;
+                            const color = (k % 2 === 0) ? '#39ff14' : '#ff0055';
+                            particles.push(new Particle(
+                                centerX,
+                                bottomY - 60,
+                                color,
+                                Math.cos(a) * speed,
+                                Math.sin(a) * speed,
+                                0.93, 0.02, 0.025
+                            ));
+                        }
+                    }, i * 30);
+                }
+            } 
+            else if (type === 'barrage') {
+                // 12-Shot Barrage
+                for (let s = 0; s < 12; s++) {
+                    setTimeout(() => {
+                        const targetX = Math.random() * (canvas.width * 0.7) + (canvas.width * 0.15);
+                        const targetY = Math.random() * (canvas.height * 0.4) + 60;
+                        rockets.push(new Rocket(targetX + (Math.random() * 40 - 20), canvas.height, targetX, targetY));
+                    }, s * 300);
+                }
+            } 
+            else if (type === 'phuljhadi') {
+                // Sparkler
+                for (let p = 0; p < 70; p++) {
+                    setTimeout(() => {
+                        sound.playCrackle();
+                        for (let k = 0; k < 3; k++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const speed = Math.random() * 5 + 1;
+                            particles.push(new Particle(
+                                centerX,
+                                canvas.height / 2,
+                                '#ffe066',
+                                Math.cos(angle) * speed,
+                                Math.sin(angle) * speed,
+                                0.92, 0.04, 0.04
+                            ));
+                        }
+                    }, p * 35);
+                }
+            }
+        }
+
+        // ========================================================
+        // 4. DIYAS LIGHTING CEREMONY
+        // ========================================================
+        const diyasContainer = document.getElementById('diyasContainer');
+        const TOTAL_DIYAS = 7;
+        let litCount = 0;
+
+        for (let i = 1; i <= TOTAL_DIYAS; i++) {
+            const diyaEl = document.createElement('div');
+            diyaEl.className = 'diya-item';
+            diyaEl.title = `दीया #${i} प्रज्ज्वलित करें`;
+            diyaEl.innerHTML = `
+                <div class="diya-flame" id="flame-${i}"></div>
+                <svg class="diya-pot" viewBox="0 0 60 30">
+                    <defs>
+                        <linearGradient id="clayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#b45309" />
+                            <stop offset="50%" stop-color="#78350f" />
+                            <stop offset="100%" stop-color="#451a03" />
+                        </linearGradient>
+                        <linearGradient id="goldRim" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#fef08a" />
+                            <stop offset="50%" stop-color="#ffd700" />
+                            <stop offset="100%" stop-color="#b45309" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Clay Pot Body -->
+                    <path d="M5,10 Q30,32 55,10 Q50,2 30,5 Q10,2 5,10 Z" fill="url(#clayGrad)" />
+                    <!-- Golden Rim -->
+                    <ellipse cx="30" cy="8" rx="25" ry="4" fill="url(#goldRim)" />
+                    <!-- Sacred Center Wick -->
+                    <rect x="29" y="3" width="2" height="6" fill="#1c1917" rx="1" />
+                </svg>
+                <span class="diya-number">दीपक ${i}</span>
+            `;
+
+            diyaEl.addEventListener('click', () => {
+                if (!diyaEl.classList.contains('lit')) {
+                    diyaEl.classList.add('lit');
+                    sound.playBell();
+                    litCount++;
+                    // Sparkles above diya
+                    const rect = diyaEl.getBoundingClientRect();
+                    explodeAt(rect.left + rect.width / 2, rect.top + 10, 25);
+
+                    if (litCount === TOTAL_DIYAS) {
+                        setTimeout(() => {
+                            triggerGrandCelebration();
+                        }, 500);
+                    }
+                }
+            });
+
+            diyasContainer.appendChild(diyaEl);
+        }
+
+        // Auto-ignite first diya to welcome user
+        setTimeout(() => {
+            const first = document.querySelector('.diya-item');
+            if (first && !first.classList.contains('lit')) first.click();
+        }, 1000);
+
+        // ========================================================
+        // 5. DHAN VARSHA (GOLD COIN SHOWER)
+        // ========================================================
+        const btnDhanVarsha = document.getElementById('btnDhanVarsha');
+        btnDhanVarsha.addEventListener('click', () => {
+            sound.playBell();
+            for (let i = 0; i < 40; i++) {
+                setTimeout(() => {
+                    sound.playCoin();
+                    createGoldCoin();
+                }, i * 70);
+            }
+        });
+
+        function createGoldCoin() {
+            const coin = document.createElement('div');
+            coin.className = 'coin-particle';
+            coin.innerText = '卐';
+            const startX = Math.random() * (window.innerWidth - 40);
+            coin.style.left = `${startX}px`;
+            coin.style.top = `-40px`;
+            document.body.appendChild(coin);
+
+            const duration = Math.random() * 2000 + 2000;
+            const targetY = window.innerHeight + 50;
+            const rotation = Math.random() * 720;
+
+            const anim = coin.animate([
+                { transform: `translateY(0px) rotateY(0deg) rotateZ(0deg)`, opacity: 1 },
+                { transform: `translateY(${targetY}px) rotateY(${rotation}deg) rotateZ(${rotation / 2}deg)`, opacity: 0.9 }
+            ], {
+                duration: duration,
+                easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+            });
+
+            anim.onfinish = () => {
+                coin.remove();
+            };
+        }
+
+        // ========================================================
+        // 6. GREETING CARD GENERATOR & MODAL
+        // ========================================================
+        const btnMakeCard = document.getElementById('btnMakeCard');
+        const senderNameInput = document.getElementById('senderNameInput');
+        const greetingModal = document.getElementById('greetingModal');
+        const btnCloseModal = document.getElementById('btnCloseModal');
+        const cardSenderDisplay = document.getElementById('cardSenderDisplay');
+        const btnShareWhatsApp = document.getElementById('btnShareWhatsApp');
+
+        btnMakeCard.addEventListener('click', () => {
+            const name = senderNameInput.value.trim() || 'प्रज्वल एवं परिवार';
+            cardSenderDisplay.innerText = name;
+
+            const shareText = `🪔✨ शुभ दीपावली! ✨🪔\n\nदीयों की रोशनी से जगमगाए आपका संसार, सुख, समृद्धि और शांति लाए यह त्यौहार!\n\nशुभकामनाएं प्रेषक: ${name}\n\nHappy Diwali 2026! 🎇`;
+            btnShareWhatsApp.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+
+            greetingModal.classList.add('show');
+            sound.playBell();
+            triggerGrandCelebration();
+        });
+
+        btnCloseModal.addEventListener('click', () => {
+            greetingModal.classList.remove('show');
+        });
+
+        greetingModal.addEventListener('click', (e) => {
+            if (e.target === greetingModal) greetingModal.classList.remove('show');
+        });
+
+        // Grand Celebration Burst
+        function triggerGrandCelebration() {
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const rx = Math.random() * (canvas.width * 0.8) + (canvas.width * 0.1);
+                    const ry = Math.random() * (canvas.height * 0.5) + 60;
+                    explodeAt(rx, ry, 120);
+                }, i * 220);
+            }
+        }
+
+        // ========================================================
+        // 7. AUTO SKY & AUDIO CONTROLS
+        // ========================================================
+        const btnAudioToggle = document.getElementById('btnAudioToggle');
+        btnAudioToggle.addEventListener('click', () => {
+            sound.enabled = !sound.enabled;
+            if (sound.enabled) {
+                btnAudioToggle.classList.add('active');
+                btnAudioToggle.innerHTML = '<i class="fas fa-volume-high"></i> <span>Sound FX: ON</span>';
+                sound.playBell();
+            } else {
+                btnAudioToggle.classList.remove('active');
+                btnAudioToggle.innerHTML = '<i class="fas fa-volume-xmark"></i> <span>Sound FX: OFF</span>';
+            }
+        });
+
+        const btnAutoFireworks = document.getElementById('btnAutoFireworks');
+        let autoSkyInterval = null;
+
+        btnAutoFireworks.addEventListener('click', () => {
+            if (autoSkyInterval) {
+                clearInterval(autoSkyInterval);
+                autoSkyInterval = null;
+                btnAutoFireworks.classList.remove('active');
+                btnAutoFireworks.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> <span>Auto Sky: OFF</span>';
+            } else {
+                btnAutoFireworks.classList.add('active');
+                btnAutoFireworks.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> <span>Auto Sky: ON</span>';
+                autoSkyInterval = setInterval(() => {
+                    const tx = Math.random() * (canvas.width * 0.8) + (canvas.width * 0.1);
+                    const ty = Math.random() * (canvas.height * 0.45) + 70;
+                    rockets.push(new Rocket(tx + (Math.random() * 80 - 40), canvas.height, tx, ty));
+                }, 1200);
+            }
+        });
+    </script>
+</body>
+</html>
