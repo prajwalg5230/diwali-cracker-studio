@@ -878,174 +878,461 @@
         }
         setInterval(() => updateSubhechha(false), 4200);
 
-        // Sound Synthesizer (100% Fail-Safe)
+        // ========================================================
+        // HIGH-PRECISION MOBILE HAPTIC VIBRATION ENGINE
+        // ========================================================
+        function haptic(pattern) {
+            try {
+                if (sfx && sfx.enabled && 'vibrate' in navigator) {
+                    navigator.vibrate(pattern);
+                }
+            } catch (e) {}
+        }
+
+        // ========================================================
+        // HIGH-DEFINITION DUAL-ENGINE FIRECRACKER SOUND SYSTEM
+        // (Real Recorded Studio Samples + Physical Acoustic DSP + Haptics)
+        // ========================================================
         class SoundSynth {
             constructor() {
                 this.ctx = null;
                 this.enabled = true;
+                this.buffers = {};
+                this.isLoading = false;
+                this.noiseBuffer = null;
+                this.audioUrls = {
+                    burst_peony: 'audio/burst_peony.mp3',
+                    burst: 'audio/burst.mp3',
+                    ignite: 'audio/ignite-1.mp3',
+                    rocket_whistle: 'audio/lantern-riser.mp3',
+                    match: 'audio/match-strike.mp3',
+                    flame: 'audio/flame-catch.mp3'
+                };
             }
 
             init() {
                 try {
                     if (!this.ctx) {
-                        const AudioContext = window.AudioContext || window.webkitAudioContext;
-                        if (AudioContext) {
-                            this.ctx = new AudioContext();
-                        }
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (AudioCtx) this.ctx = new AudioCtx();
                     }
                     if (this.ctx && this.ctx.state === 'suspended') {
                         this.ctx.resume().catch(() => {});
                     }
+                    if (this.ctx && !this.noiseBuffer) {
+                        this.createNoiseBuffer();
+                    }
+                    if (this.ctx && !this.isLoading && Object.keys(this.buffers).length === 0) {
+                        this.loadSamples();
+                    }
                 } catch (e) {}
             }
 
+            createNoiseBuffer() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 2;
+                this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = this.noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+            }
+
+            async loadSamples() {
+                this.isLoading = true;
+                for (const [key, url] of Object.entries(this.audioUrls)) {
+                    try {
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const arr = await res.arrayBuffer();
+                            this.ctx.decodeAudioData(arr, (decoded) => {
+                                this.buffers[key] = decoded;
+                            }, () => {});
+                        }
+                    } catch (err) {}
+                }
+            }
+
+            playSample(key, { volume = 1.0, rate = 1.0, pan = 0, delay = 0 } = {}) {
+                if (!this.enabled || !this.ctx || !this.buffers[key]) return false;
+                try {
+                    const now = this.ctx.currentTime + delay;
+                    const src = this.ctx.createBufferSource();
+                    src.buffer = this.buffers[key];
+                    src.playbackRate.setValueAtTime(rate, now);
+                    const gainNode = this.ctx.createGain();
+                    gainNode.gain.setValueAtTime(volume, now);
+
+                    if (this.ctx.createStereoPanner && pan !== 0) {
+                        const panner = this.ctx.createStereoPanner();
+                        panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), now);
+                        src.connect(gainNode);
+                        gainNode.connect(panner);
+                        panner.connect(this.ctx.destination);
+                    } else {
+                        src.connect(gainNode);
+                        gainNode.connect(this.ctx.destination);
+                    }
+                    src.start(now);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            // 1. REAL FUSE SIZZLE (Real ignite spark + high-pass sizzle + tactile ticks)
             playFuse() {
                 if (!this.enabled) return;
                 try {
                     this.init();
                     if (!this.ctx) return;
+                    haptic([10, 25, 15]);
+                    if (this.playSample('ignite', { volume: 0.65, rate: 0.95 + Math.random() * 0.15 })) {
+                        return;
+                    }
                     const now = this.ctx.currentTime;
                     const dur = 0.22;
-                    const buf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * dur), this.ctx.sampleRate);
-                    const d = buf.getChannelData(0);
-                    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.35));
-                    const src = this.ctx.createBufferSource();
-                    src.buffer = buf;
-                    const filter = this.ctx.createBiquadFilter();
-                    filter.type = 'highpass';
-                    filter.frequency.setValueAtTime(2600, now);
-                    const gain = this.ctx.createGain();
-                    gain.gain.setValueAtTime(0.08, now);
-                    gain.gain.linearRampToValueAtTime(0.001, now + dur);
-                    src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-                    src.start(now);
+                    if (this.noiseBuffer) {
+                        const src = this.ctx.createBufferSource();
+                        src.buffer = this.noiseBuffer;
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'bandpass';
+                        filter.frequency.setValueAtTime(3400 + Math.random() * 800, now);
+                        filter.Q.setValueAtTime(4.0, now);
+                        const gain = this.ctx.createGain();
+                        gain.gain.setValueAtTime(0.14, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                        src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                        src.start(now); src.stop(now + dur);
+                    }
                 } catch (e) {}
             }
 
-            playCrackle() {
-                if (!this.enabled) return;
-                try {
-                    this.init();
-                    if (!this.ctx) return;
-                    const now = this.ctx.currentTime;
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(1400 + Math.random() * 3200, now);
-                    gain.gain.setValueAtTime(0.08, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-                    osc.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(now); osc.stop(now + 0.035);
-                } catch (e) {}
-            }
-
-            playWhirr() {
-                if (!this.enabled) return;
-                try {
-                    this.init();
-                    if (!this.ctx) return;
-                    const now = this.ctx.currentTime;
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(420 + Math.random() * 120, now);
-                    osc.frequency.linearRampToValueAtTime(820, now + 0.08);
-                    gain.gain.setValueAtTime(0.09, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-                    osc.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(now); osc.stop(now + 0.08);
-                } catch (e) {}
-            }
-
-            playWhoosh() {
-                if (!this.enabled) return;
-                try {
-                    this.init();
-                    if (!this.ctx) return;
-                    const now = this.ctx.currentTime;
-                    const dur = 0.95;
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(160, now);
-                    osc.frequency.exponentialRampToValueAtTime(2000, now + dur);
-                    gain.gain.setValueAtTime(0.01, now);
-                    gain.gain.linearRampToValueAtTime(0.2, now + dur * 0.7);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-                    osc.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(now); osc.stop(now + dur);
-                } catch (e) {}
-            }
-
+            // 2. SUTLI BOMB (Heavy detonation, seismic sub-bass, cord shredding, massive shockwave)
             playBombBang() {
+                this.playSutliBomb();
+            }
+
+            playSutliBomb() {
                 if (!this.enabled) return;
                 try {
                     this.init();
                     if (!this.ctx) return;
+                    haptic([20, 25, 280, 50, 130]);
                     const now = this.ctx.currentTime;
-                    const dur = 0.9;
+
+                    this.playSample('burst_peony', { volume: 1.0, rate: 0.92 });
 
                     const osc = this.ctx.createOscillator();
                     const oscGain = this.ctx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(160, now);
-                    osc.frequency.exponentialRampToValueAtTime(24, now + dur);
-                    oscGain.gain.setValueAtTime(0.9, now);
-                    oscGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                    osc.frequency.setValueAtTime(72, now);
+                    osc.frequency.exponentialRampToValueAtTime(16, now + 0.9);
+                    oscGain.gain.setValueAtTime(1.0, now);
+                    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
                     osc.connect(oscGain); oscGain.connect(this.ctx.destination);
-                    osc.start(now); osc.stop(now + dur);
+                    osc.start(now); osc.stop(now + 0.9);
 
-                    const buf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.6), this.ctx.sampleRate);
-                    const d = buf.getChannelData(0);
-                    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
-                    const noise = this.ctx.createBufferSource();
-                    noise.buffer = buf;
-                    const filter = this.ctx.createBiquadFilter();
-                    filter.type = 'lowpass';
-                    filter.frequency.setValueAtTime(800, now);
-                    filter.frequency.exponentialRampToValueAtTime(45, now + 0.6);
-                    const nGain = this.ctx.createGain();
-                    nGain.gain.setValueAtTime(0.85, now);
-                    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-                    noise.connect(filter); filter.connect(nGain); nGain.connect(this.ctx.destination);
-                    noise.start(now);
+                    if (this.noiseBuffer) {
+                        const noise = this.ctx.createBufferSource();
+                        noise.buffer = this.noiseBuffer;
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(1500, now);
+                        filter.frequency.exponentialRampToValueAtTime(42, now + 0.75);
+                        const nGain = this.ctx.createGain();
+                        nGain.gain.setValueAtTime(0.95, now);
+                        nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+                        noise.connect(filter); filter.connect(nGain); nGain.connect(this.ctx.destination);
+                        noise.start(now); noise.stop(now + 0.75);
+
+                        const cord = this.ctx.createBufferSource();
+                        cord.buffer = this.noiseBuffer;
+                        const cFilt = this.ctx.createBiquadFilter();
+                        cFilt.type = 'bandpass';
+                        cFilt.frequency.setValueAtTime(2600, now);
+                        cFilt.Q.setValueAtTime(3.0, now);
+                        const cGain = this.ctx.createGain();
+                        cGain.gain.setValueAtTime(0.65, now);
+                        cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                        cord.connect(cFilt); cFilt.connect(cGain); cGain.connect(this.ctx.destination);
+                        cord.start(now); cord.stop(now + 0.2);
+                    }
                 } catch (e) {}
             }
 
-            playPop() {
+            // 3. SKY ROCKET LAUNCH (Screaming whistling ascent + high pressure thruster roar)
+            playWhoosh() {
+                this.playRocketLaunch();
+            }
+
+            playRocketLaunch() {
                 if (!this.enabled) return;
                 try {
                     this.init();
                     if (!this.ctx) return;
+                    haptic([35, 40, 55]);
                     const now = this.ctx.currentTime;
+                    const dur = 1.05;
+
+                    this.playSample('rocket_whistle', { volume: 0.92, rate: 1.15 });
+
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(1200 + Math.random() * 400, now);
-                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.06);
-                    gain.gain.setValueAtTime(0.24, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
-                    osc.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(now); osc.stop(now + 0.06);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(420, now);
+                    osc.frequency.exponentialRampToValueAtTime(3600, now + dur);
+                    gain.gain.setValueAtTime(0.03, now);
+                    gain.gain.linearRampToValueAtTime(0.28, now + dur * 0.75);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(800, now);
+                    filter.frequency.exponentialRampToValueAtTime(3800, now + dur);
+                    filter.Q.setValueAtTime(4.0, now);
+
+                    osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now); osc.stop(now + dur);
                 } catch (e) {}
             }
 
+            // 4. HIGH-ALTITUDE AERIAL BURST (Delayed double-crack + sparkling peony embers)
             playAerialBurst() {
+                this.playRocketBurst();
+            }
+
+            playRocketBurst() {
                 if (!this.enabled) return;
                 try {
                     this.init();
                     if (!this.ctx) return;
+                    haptic(180);
                     const now = this.ctx.currentTime;
-                    const dur = 0.65;
+                    const dur = 0.85;
+
+                    this.playSample('burst_peony', { volume: 0.95, rate: 1.05 });
+
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(260, now);
-                    osc.frequency.exponentialRampToValueAtTime(40, now + dur);
-                    gain.gain.setValueAtTime(0.5, now);
+                    osc.frequency.setValueAtTime(230, now);
+                    osc.frequency.exponentialRampToValueAtTime(35, now + dur);
+                    gain.gain.setValueAtTime(0.65, now);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
                     osc.connect(gain); gain.connect(this.ctx.destination);
                     osc.start(now); osc.stop(now + dur);
+
+                    setTimeout(() => this.playAnarCrackles(3), 110);
+                } catch (e) {}
+            }
+
+            // 5. CHAKRI (Whistling ground spinner, Doppler modulation + friction hiss)
+            playWhirr() {
+                this.playChakriSpin(0.8);
+            }
+
+            playChakriSpin(rpm = 0.5) {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic([25, 20, 30, 20]);
+                    const now = this.ctx.currentTime;
+                    const dur = 0.12;
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    const baseFreq = 450 + (rpm * 750);
+                    osc.frequency.setValueAtTime(baseFreq, now);
+                    osc.frequency.linearRampToValueAtTime(baseFreq + 190, now + dur * 0.5);
+                    osc.frequency.linearRampToValueAtTime(baseFreq, now + dur);
+
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(1450, now);
+                    filter.Q.setValueAtTime(3.0, now);
+
+                    osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now); osc.stop(now + dur);
+
+                    if (this.noiseBuffer) {
+                        const friction = this.ctx.createBufferSource();
+                        friction.buffer = this.noiseBuffer;
+                        const fFilt = this.ctx.createBiquadFilter();
+                        fFilt.type = 'highpass';
+                        fFilt.frequency.setValueAtTime(2300, now);
+                        const fGain = this.ctx.createGain();
+                        fGain.gain.setValueAtTime(0.07, now);
+                        fGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                        friction.connect(fFilt); fFilt.connect(fGain); fGain.connect(this.ctx.destination);
+                        friction.start(now); friction.stop(now + dur);
+                    }
+                } catch (e) {}
+            }
+
+            // 6. ANAR (Volcanic sky-high fountain roar + gold embers crackling)
+            playAnarFountain() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic([18, 35, 18, 35]);
+                    const now = this.ctx.currentTime;
+                    const dur = 0.18;
+
+                    if (this.noiseBuffer) {
+                        const roar = this.ctx.createBufferSource();
+                        roar.buffer = this.noiseBuffer;
+                        const rFilt = this.ctx.createBiquadFilter();
+                        rFilt.type = 'lowpass';
+                        rFilt.frequency.setValueAtTime(380, now);
+                        const rGain = this.ctx.createGain();
+                        rGain.gain.setValueAtTime(0.24, now);
+                        rGain.gain.linearRampToValueAtTime(0.001, now + dur);
+                        roar.connect(rFilt); rFilt.connect(rGain); rGain.connect(this.ctx.destination);
+                        roar.start(now); roar.stop(now + dur);
+
+                        const hiss = this.ctx.createBufferSource();
+                        hiss.buffer = this.noiseBuffer;
+                        const hFilt = this.ctx.createBiquadFilter();
+                        hFilt.type = 'bandpass';
+                        hFilt.frequency.setValueAtTime(1800, now);
+                        hFilt.Q.setValueAtTime(2.5, now);
+                        const hGain = this.ctx.createGain();
+                        hGain.gain.setValueAtTime(0.22, now);
+                        hGain.gain.linearRampToValueAtTime(0.001, now + dur);
+                        hiss.connect(hFilt); hFilt.connect(hGain); hGain.connect(this.ctx.destination);
+                        hiss.start(now); hiss.stop(now + dur);
+                    }
+                } catch (e) {}
+            }
+
+            playAnarCrackles(count = 2) {
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => this.playCrackle(), i * 40);
+                }
+            }
+
+            // 7. SPARKLER STICK (Intimate magnesium & titanium spark micro-crackle)
+            playCrackle() {
+                this.playSparkler();
+            }
+
+            playSparkler() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic(12);
+                    const now = this.ctx.currentTime;
+                    const dur = 0.045;
+
+                    if (this.noiseBuffer) {
+                        const src = this.ctx.createBufferSource();
+                        src.buffer = this.noiseBuffer;
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'highpass';
+                        filter.frequency.setValueAtTime(3400 + Math.random() * 2800, now);
+                        const gain = this.ctx.createGain();
+                        gain.gain.setValueAtTime(0.12 + Math.random() * 0.08, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                        src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                        src.start(now); src.stop(now + dur);
+                    }
+                } catch (e) {}
+            }
+
+            // 8. LAVANGI LADI (Real firecracker burst with randomized pitch and spatial panning)
+            playPop() {
+                this.playLadiPop(0);
+            }
+
+            playLadiPop(index = 0) {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic(24);
+                    const now = this.ctx.currentTime;
+                    const pan = (index / 18) * 1.4 - 0.7;
+
+                    this.playSample('burst', {
+                        volume: 0.85 + Math.random() * 0.25,
+                        rate: 0.92 + (Math.random() - 0.5) * 0.45,
+                        pan: pan
+                    });
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(1400 + Math.random() * 450, now);
+                    osc.frequency.exponentialRampToValueAtTime(95, now + 0.055);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now); osc.stop(now + 0.055);
+                } catch (e) {}
+            }
+
+            playLadiFinale() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic([120, 30, 90]);
+                    this.playSample('burst_peony', { volume: 1.0, rate: 1.0 });
+                    this.playSutliBomb();
+                } catch (e) {}
+            }
+
+            // 9. BLACK SNAKE TABLET SIZZLE
+            playSnakeSizzle() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic([15, 50, 15]);
+                    const now = this.ctx.currentTime;
+                    const dur = 0.06;
+
+                    if (this.noiseBuffer) {
+                        const src = this.ctx.createBufferSource();
+                        src.buffer = this.noiseBuffer;
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'bandpass';
+                        filter.frequency.setValueAtTime(1200 + Math.random() * 800, now);
+                        filter.Q.setValueAtTime(2.0, now);
+                        const gain = this.ctx.createGain();
+                        gain.gain.setValueAtTime(0.14, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                        src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                        src.start(now); src.stop(now + dur);
+                    }
+                } catch (e) {}
+            }
+
+            // 10. SKYSHOT MORTAR THUMP
+            playMortarThump() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    haptic([40, 50, 160]);
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(160, now);
+                    osc.frequency.exponentialRampToValueAtTime(38, now + 0.22);
+                    gain.gain.setValueAtTime(0.7, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now); osc.stop(now + 0.22);
                 } catch (e) {}
             }
         }
@@ -1940,6 +2227,8 @@
         }
 
         function selectCracker(type) {
+            haptic(15);
+            sfx.init();
             resetCracker();
             currentCracker = type;
 
@@ -1996,12 +2285,13 @@
                 // ANAR: SKY-HIGH FOUNTAIN SHOOTING RIGHT TO VERY TOP OF THE BOX SKY!
                 const mouthX = cx;
                 const mouthY = groundY - 110;
-                sfx.playWhoosh();
+                sfx.playAnarFountain();
 
                 let frame = 0;
                 const timer = setInterval(() => {
                     frame++;
-                    if (frame % 3 === 0) sfx.playCrackle();
+                    if (frame % 4 === 0) sfx.playAnarFountain();
+                    if (frame % 2 === 0) sfx.playAnarCrackles(1);
 
                     // High velocity eruption (speed 17.5 to 28.5px/frame!)
                     for (let i = 0; i < 24; i++) {
@@ -2032,7 +2322,7 @@
 
                 const timer = setInterval(() => {
                     frame++;
-                    if (frame % 4 === 0) sfx.playWhirr();
+                    if (frame % 3 === 0) sfx.playChakriSpin(chakriRPM);
 
                     const jetAngle = chakriAngle - Math.PI / 2;
                     for (let i = 0; i < 12; i++) {
@@ -2066,7 +2356,7 @@
                     frame++;
                     stickBurnProgress = Math.min(1.0, frame / 180);
 
-                    if (frame % 3 === 0) sfx.playCrackle();
+                    if (frame % 2 === 0) sfx.playSparkler();
 
                     const currentBurnS = stickBurnProgress * STICK_COAT_LEN;
                     const pBurn = getStickPoint(currentBurnS);
@@ -2099,6 +2389,7 @@
                 const bH = 38;
                 const timer = setInterval(() => {
                     fuseProgress++;
+                    if (fuseProgress % 4 === 0) sfx.playFuse();
                     bombFuseHeight = Math.max(0, 36 - (fuseProgress * 0.95));
 
                     particlePool.spawn(
@@ -2115,7 +2406,7 @@
                         bombExploded = true;
 
                         triggerScreenFlash();
-                        sfx.playBombBang();
+                        sfx.playSutliBomb();
 
                         stageBox.classList.add('shake-box');
                         setTimeout(() => stageBox.classList.remove('shake-box'), 450);
@@ -2149,6 +2440,7 @@
                 let fuseStep = 0;
                 const fuseTimer = setInterval(() => {
                     fuseStep++;
+                    if (fuseStep % 3 === 0) sfx.playFuse();
                     particlePool.spawn(
                         cx + 5, botY - 10,
                         '#ff6600',
@@ -2161,7 +2453,7 @@
                         clearInterval(fuseTimer);
 
                         rocketInBottle = false;
-                        sfx.playWhoosh();
+                        sfx.playRocketLaunch();
                         const targetX = cx;
                         const targetY = canvas.height * 0.15;
                         rockets.push(new AscendingRocket(cx, botY - 20, targetX, targetY, false, 0));
@@ -2177,7 +2469,7 @@
                 ladiBurstIdx = 0;
 
                 const timer = setInterval(() => {
-                    sfx.playPop();
+                    sfx.playLadiPop(curIdx);
                     const lx = cx - 95 + (curIdx * 11);
                     const ly = groundY - 16;
 
@@ -2199,7 +2491,7 @@
                     curIdx++;
                     if (curIdx >= 18) {
                         clearInterval(timer);
-                        sfx.playBombBang();
+                        sfx.playLadiFinale();
                         setTimeout(resetCracker, 1300);
                     }
                 }, 90);
@@ -2214,7 +2506,7 @@
 
                 const timer = setInterval(() => {
                     frame++;
-                    sfx.playFuse();
+                    if (frame % 3 === 0) sfx.playSnakeSizzle();
                     sY -= Math.random() * 2.2 + 1;
 
                     snakeTabletScale = Math.max(0.12, 1.0 - (frame / 70));
@@ -2248,7 +2540,7 @@
                 const timer = setInterval(() => {
                     if (shot < 7) {
                         activeSkyshotBarrel = shot;
-                        sfx.playWhoosh();
+                        sfx.playMortarThump();
                         const bx = cx - 42 + (shot * 14);
                         const by = groundY - 74;
 
