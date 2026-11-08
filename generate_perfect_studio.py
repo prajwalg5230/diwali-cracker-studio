@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Ultimate Diwali Cracker Studio Generator - Perfect Alignment & Sky-High Fountain Update
-Fixes:
-1. Mathematically Perfect Phuljhadi (Sparkler) Alignment:
-   - Co-axial parametric line: wire and pyrotechnic coating share the exact same axis vector (dx, dy).
-   - Uniform thickness (9.5px coating over 3.5px metallic steel wire).
-   - Dynamic burn front moves smoothly along the axis from tip (s=0) to handle (s=125).
-   - Sparks emanate exactly from the moving white-hot burn front point on the stick.
-2. Sky-High Paus Fountain (Anar):
-   - High velocity eruption (speed 17.5 to 28.5px/frame, gravity 0.16, decay 0.011).
-   - Soars right to the very top of the Cracker Box sky, cascading in massive, billowing golden willow waterfalls.
-3. Zero-Lag 1200 ParticlePool Engine:
-   - Zero GC allocations, silky smooth 60-120 FPS on all devices.
-4. Next-Level 7-Barrel Royal Cake Battery (Tof) & 3D Single-Nozzle Chakra:
-   - Maintained exactly with zero unwanted changes.
+Ultimate Diwali Cracker Studio Generator - Professional Black & Premium Gold Edition
+Updates:
+1. Professional Black & Premium Gold Theme:
+   - Deep obsidian jet black background with warm 24K molten gold gradients and glassmorphism.
+   - Luxury gold brushed borders, glowing gold typography with Cinzel font, premium gold buttons.
+2. Removed C++ WASM Badge:
+   - Clean top utility bar with only Language Switch (left) and Sound FX toggle (right).
+   - High-performance C++ WASM physics engine continues to run silently in the background.
+3. Lavangi Maal Dynamic Shortening & Exploding:
+   - As each cracker pops, it explodes into sparks/confetti and disappears leaving charred ash,
+     visibly shortening the garland until all 18 explode!
+   - Smoothly restarts fresh with a full garland for the next round.
+4. Paus Fountain Fixed:
+   - Wick disappears when burning.
+   - Sparks erupt exclusively from the top nozzle mouth with strictly skyward velocity (speed 18-28.5),
+     eliminating any sparks or flame below the wick mouth.
+5. All other cracker physics & features preserved exactly without changes!
 """
 
 with open('/data/data/com.termux/files/home/diwali_website/wasm_b64.txt') as f:
@@ -29,17 +32,24 @@ html_content = r'''<!DOCTYPE html>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Poppins:wght@400;600;700;800;900&family=Tiro+Devanagari+Marathi:ital@0;1&family=Yatra+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Tiro+Devanagari+Marathi:ital@0;1&family=Yatra+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         :root {
-            --gold-bright: #ffd700;
-            --gold-deep: #f59e0b;
-            --gold-grad: linear-gradient(135deg, #ffe066 0%, #ffd700 50%, #f59e0b 100%);
-            --royal-bg: radial-gradient(circle at 50% 8%, #2d0a4e 0%, #130426 55%, #05000e 100%);
-            --card-border: rgba(255, 215, 0, 0.45);
-            --card-glow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 25px rgba(255, 160, 0, 0.22);
+            /* Professional Black & Premium Gold Palette */
+            --gold-bright: #fff2a3;
+            --gold-primary: #ffd700;
+            --gold-rich: #d4af37;
+            --gold-dark: #996515;
+            --gold-grad: linear-gradient(135deg, #fff3a8 0%, #ffd700 35%, #d4af37 70%, #996515 100%);
+            --gold-border: rgba(212, 175, 55, 0.45);
+            --gold-glow: 0 0 25px rgba(212, 175, 55, 0.25);
+
+            --obsidian-bg: radial-gradient(circle at 50% 12%, #181206 0%, #090703 55%, #000000 100%);
+            --card-bg: rgba(18, 14, 5, 0.82);
+            --card-border: 1.5px solid rgba(212, 175, 55, 0.35);
+            --card-shadow: 0 10px 35px rgba(0, 0, 0, 0.95), 0 0 20px rgba(212, 175, 55, 0.12);
         }
 
         * {
@@ -57,7 +67,7 @@ html_content = r'''<!DOCTYPE html>
             overflow: hidden;
             overscroll-behavior: none;
             touch-action: manipulation;
-            background: var(--royal-bg);
+            background: var(--obsidian-bg);
             font-family: 'Poppins', 'Tiro Devanagari Marathi', sans-serif;
             color: #fff;
             display: flex;
@@ -85,7 +95,7 @@ html_content = r'''<!DOCTYPE html>
             transition: opacity 0.05s ease-out;
         }
 
-        /* Top Action Utility Bar */
+        /* Top Action Utility Bar (Clean Layout without C++ Badge) */
         .top-utility-bar {
             position: relative;
             z-index: 20;
@@ -99,75 +109,54 @@ html_content = r'''<!DOCTYPE html>
         }
 
         .lang-switch-btn {
-            background: rgba(255, 215, 0, 0.15);
-            border: 1.5px solid var(--card-border);
-            color: #ffd700;
-            padding: 3px 10px;
+            background: rgba(18, 14, 5, 0.85);
+            border: 1.5px solid var(--gold-border);
+            color: var(--gold-primary);
+            padding: 3px 12px;
             border-radius: 18px;
             font-size: 0.72rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
-            backdrop-filter: blur(8px);
+            gap: 6px;
+            backdrop-filter: blur(10px);
             transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
         }
 
         .lang-switch-btn:hover {
             background: var(--gold-grad);
             color: #000;
             transform: scale(1.04);
-        }
-
-        .wasm-badge {
-            background: rgba(16, 185, 129, 0.18);
-            border: 1px solid #10b981;
-            color: #6ee7b7;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.62rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .wasm-badge .pulse {
-            width: 5px; height: 5px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;
-            animation: pulseDot 1s infinite alternate;
-        }
-
-        @keyframes pulseDot {
-            0% { transform: scale(0.8); opacity: 0.6; }
-            100% { transform: scale(1.3); opacity: 1; }
+            box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
         }
 
         .sound-switch-btn {
-            background: rgba(255, 215, 0, 0.15);
-            border: 1.5px solid var(--card-border);
-            color: #ffd700;
-            padding: 3px 10px;
+            background: rgba(18, 14, 5, 0.85);
+            border: 1.5px solid var(--gold-border);
+            color: var(--gold-primary);
+            padding: 3px 12px;
             border-radius: 18px;
             font-size: 0.72rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
-            backdrop-filter: blur(8px);
+            gap: 6px;
+            backdrop-filter: blur(10px);
             transition: all 0.2s;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
         }
 
         .sound-switch-btn.active {
             background: var(--gold-grad);
             color: #000;
-            box-shadow: 0 2px 10px rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 16px rgba(255, 215, 0, 0.5);
         }
 
         /* ========================================================
-           HEADER: COMPACT & TOUCHING THE TOP
+           HEADER: PROFESSIONAL BLACK & GOLD ELEGANCE
            ======================================================== */
         .festive-hero {
             position: relative;
@@ -187,7 +176,7 @@ html_content = r'''<!DOCTYPE html>
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 14px;
             width: 100%;
         }
 
@@ -206,7 +195,7 @@ html_content = r'''<!DOCTYPE html>
             height: 17px;
             background: radial-gradient(ellipse at 50% 85%, #ffffff 0%, #fffb00 35%, #ff5500 70%, transparent 95%);
             border-radius: 50% 50% 35% 35% / 70% 70% 30% 30%;
-            filter: drop-shadow(0 0 8px #ff6600) drop-shadow(0 0 16px #ffbb00);
+            filter: drop-shadow(0 0 8px #ff7700) drop-shadow(0 0 16px #ffbb00);
             animation: flameFlicker 1.3s infinite alternate ease-in-out;
             transform-origin: center bottom;
         }
@@ -214,16 +203,16 @@ html_content = r'''<!DOCTYPE html>
         .diya-base {
             width: 26px;
             height: 11px;
-            background: linear-gradient(180deg, #d97706 0%, #78350f 100%);
+            background: linear-gradient(180deg, #d4af37 0%, #78350f 100%);
             border-radius: 0 0 16px 16px;
-            border-top: 1.5px solid #fde68a;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+            border-top: 1.5px solid #fff2a3;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.85);
             margin-top: -2px;
         }
 
         @keyframes flameFlicker {
             0% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 8px #ff7700); }
-            50% { transform: scale(1.12, 0.94) rotate(3deg); filter: drop-shadow(0 0 11px #ff4400); }
+            50% { transform: scale(1.12, 0.94) rotate(3deg); filter: drop-shadow(0 0 12px #ff4400); }
             100% { transform: scale(0.96, 1.06) rotate(-2deg); filter: drop-shadow(0 0 8px #ff8800); }
         }
 
@@ -237,8 +226,8 @@ html_content = r'''<!DOCTYPE html>
             font-size: 0.68rem;
             font-weight: 700;
             color: #fde68a;
-            letter-spacing: 1.2px;
-            text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+            letter-spacing: 1.4px;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.85);
             margin-bottom: -2px;
         }
 
@@ -248,11 +237,11 @@ html_content = r'''<!DOCTYPE html>
             font-weight: 900;
             line-height: 1.1;
             color: #ffd700;
-            text-shadow: 0 0 12px rgba(255, 215, 0, 0.85), 0 0 24px rgba(255, 140, 0, 0.7), 0 2px 4px #000000;
-            letter-spacing: 1.2px;
+            text-shadow: 0 0 14px rgba(255, 215, 0, 0.9), 0 0 28px rgba(212, 175, 55, 0.75), 0 2px 5px #000000;
+            letter-spacing: 1.3px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
         }
 
         .main-title-sparkle {
@@ -263,21 +252,21 @@ html_content = r'''<!DOCTYPE html>
 
         @keyframes pulseGlow {
             0% { transform: scale(0.9); opacity: 0.7; }
-            100% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 8px #fff); }
+            100% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 10px #fff); }
         }
 
         .subhechha-card {
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.35);
+            background: rgba(18, 14, 5, 0.85);
+            border: 1px solid rgba(212, 175, 55, 0.4);
             border-radius: 12px;
-            padding: 2px 10px;
+            padding: 2px 12px;
             width: 100%;
             max-width: 95%;
-            backdrop-filter: blur(6px);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: inset 0 0 8px rgba(255, 215, 0, 0.08);
+            box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.08), 0 2px 8px rgba(0,0,0,0.7);
             min-height: 20px;
         }
 
@@ -292,7 +281,7 @@ html_content = r'''<!DOCTYPE html>
         }
 
         /* ========================================================
-           MAXIMIZED CENTRAL CRACKER STAGE BOX
+           STAGE BOX: LUXURY OBSIDIAN & BRUSHED GOLD
            ======================================================== */
         .stage-container {
             position: relative;
@@ -302,10 +291,10 @@ html_content = r'''<!DOCTYPE html>
             flex: 1;
             min-height: 330px;
             max-height: 63vh;
-            background: radial-gradient(circle at 50% 88%, #200735 0%, #0f031e 75%, #06000c 100%);
-            border: 2px solid var(--card-border);
+            background: radial-gradient(circle at 50% 88%, #140e04 0%, #080602 65%, #000000 100%);
+            border: 2px solid var(--gold-border);
             border-radius: 20px;
-            box-shadow: var(--card-glow);
+            box-shadow: var(--card-shadow);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -335,31 +324,32 @@ html_content = r'''<!DOCTYPE html>
         }
 
         .cracker-badge {
-            background: rgba(13, 3, 26, 0.85);
-            border: 1px solid var(--card-border);
-            padding: 3px 10px;
-            border-radius: 12px;
+            background: rgba(14, 11, 4, 0.88);
+            border: 1.5px solid var(--gold-border);
+            padding: 3px 12px;
+            border-radius: 14px;
             font-size: 0.72rem;
             font-weight: 700;
             color: #ffd700;
             display: flex;
             align-items: center;
-            gap: 5px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.7);
+            gap: 6px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
         }
 
         .status-badge {
             font-size: 0.68rem;
             font-weight: 600;
             color: #e2e8f0;
-            background: rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 3px 9px;
-            border-radius: 12px;
+            background: rgba(14, 11, 4, 0.88);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            padding: 3px 10px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
         }
 
         .status-badge .dot {
@@ -372,7 +362,7 @@ html_content = r'''<!DOCTYPE html>
 
         .status-badge.burning .dot {
             background: #ef4444;
-            box-shadow: 0 0 8px #ef4444;
+            box-shadow: 0 0 10px #ef4444;
             animation: pulseDot 0.5s infinite alternate;
         }
 
@@ -381,18 +371,19 @@ html_content = r'''<!DOCTYPE html>
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.75);
-            border: 1px solid rgba(255, 215, 0, 0.4);
+            background: rgba(14, 11, 4, 0.88);
+            border: 1px solid var(--gold-border);
             color: #fef08a;
             font-size: 0.68rem;
-            padding: 3px 12px;
-            border-radius: 12px;
+            padding: 3px 14px;
+            border-radius: 14px;
             pointer-events: none;
             display: none;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             z-index: 15;
-            backdrop-filter: blur(6px);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
         }
 
         /* Controls Row */
@@ -410,25 +401,25 @@ html_content = r'''<!DOCTYPE html>
         .btn-ignite {
             flex: 2.2;
             padding: 10px 14px;
-            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 60%, #b91c1c 100%);
-            color: #fff;
+            background: linear-gradient(135deg, #fff3a8 0%, #ffd700 40%, #d4af37 75%, #996515 100%);
+            color: #000;
             border: none;
             border-radius: 14px;
-            font-weight: 800;
+            font-weight: 900;
             font-size: 0.92rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
-            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.45);
             transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-            letter-spacing: 0.4px;
+            letter-spacing: 0.5px;
         }
 
         .btn-ignite:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.7);
+            box-shadow: 0 6px 25px rgba(255, 215, 0, 0.7);
         }
 
         .btn-ignite:active {
@@ -438,9 +429,9 @@ html_content = r'''<!DOCTYPE html>
         .btn-reset {
             flex: 1;
             padding: 10px 10px;
-            background: rgba(255, 215, 0, 0.12);
-            color: #ffd700;
-            border: 1.5px solid var(--card-border);
+            background: rgba(18, 14, 5, 0.85);
+            color: var(--gold-primary);
+            border: 1.5px solid var(--gold-border);
             border-radius: 14px;
             font-weight: 700;
             font-size: 0.82rem;
@@ -448,18 +439,19 @@ html_content = r'''<!DOCTYPE html>
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
-            backdrop-filter: blur(6px);
+            gap: 6px;
+            backdrop-filter: blur(8px);
             transition: all 0.2s;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.7);
         }
 
         .btn-reset:hover {
-            background: rgba(255, 215, 0, 0.22);
+            background: rgba(255, 215, 0, 0.18);
             transform: translateY(-2px);
         }
 
         /* ========================================================
-           CLEAN CRACKER SELECTOR TRAY
+           CRACKER TRAY: SLEEK OBSIDIAN & GOLD GLASS
            ======================================================== */
         .picker-container {
             position: relative;
@@ -475,11 +467,11 @@ html_content = r'''<!DOCTYPE html>
             font-weight: 700;
             color: #fde68a;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
             margin-bottom: 3px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             padding-left: 2px;
         }
 
@@ -496,8 +488,8 @@ html_content = r'''<!DOCTYPE html>
 
         .cracker-card {
             flex-shrink: 0;
-            background: rgba(255, 215, 0, 0.06);
-            border: 1.5px solid rgba(255, 215, 0, 0.2);
+            background: rgba(18, 14, 5, 0.85);
+            border: 1.5px solid rgba(212, 175, 55, 0.25);
             border-radius: 12px;
             padding: 5px 9px;
             color: #cbd5e1;
@@ -508,11 +500,12 @@ html_content = r'''<!DOCTYPE html>
             gap: 2px;
             min-width: 72px;
             transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
         }
 
         .cracker-card i {
             font-size: 1.15rem;
-            color: #f59e0b;
+            color: var(--gold-primary);
             transition: transform 0.2s;
         }
 
@@ -532,7 +525,7 @@ html_content = r'''<!DOCTYPE html>
             background: var(--gold-grad);
             color: #000;
             border-color: #ffd700;
-            box-shadow: 0 4px 16px rgba(255, 215, 0, 0.55);
+            box-shadow: 0 4px 18px rgba(255, 215, 0, 0.65);
             transform: translateY(-2px);
         }
 
@@ -542,8 +535,8 @@ html_content = r'''<!DOCTYPE html>
         }
 
         .cracker-card.active .cracker-sub {
-            color: #3f2500;
-            font-weight: 600;
+            color: #2b1d03;
+            font-weight: 700;
         }
 
         /* Footer Credit */
@@ -561,17 +554,17 @@ html_content = r'''<!DOCTYPE html>
         }
 
         .credit-badge {
-            background: rgba(255, 215, 0, 0.08);
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: rgba(18, 14, 5, 0.85);
+            border: 1px solid var(--gold-border);
             border-radius: 18px;
-            padding: 2px 12px;
+            padding: 2px 14px;
             font-size: 0.68rem;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             color: #e2e8f0;
-            backdrop-filter: blur(6px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.7);
         }
 
         .credit-author {
@@ -597,14 +590,11 @@ html_content = r'''<!DOCTYPE html>
     <div id="flashOverlay"></div>
     <canvas class="ambient-canvas" id="ambientCanvas"></canvas>
 
-    <!-- Top Utility Bar -->
+    <!-- Top Utility Bar (Clean Layout: Lang Switch on Left, Sound Switch on Right) -->
     <div class="top-utility-bar">
         <button class="lang-switch-btn" id="btnLangSwitch" title="Switch Language">
             <i class="fas fa-language"></i> <span id="lblLang">मराठी / English</span>
         </button>
-        <div class="wasm-badge" title="High-Speed C++ WebAssembly Physics Engine">
-            <div class="pulse"></div> <span>C++ WASM Engine</span>
-        </div>
         <button class="sound-switch-btn active" id="btnSoundSwitch" title="Sound FX Toggle">
             <i class="fas fa-volume-high"></i> <span id="lblSound">आवाज सुरू</span>
         </button>
@@ -735,12 +725,13 @@ html_content = r'''<!DOCTYPE html>
         let isBurning = false;
         let rocketInBottle = true;
 
-        // Dynamic Cracker Interactive States
+        // Dynamic Interactive States
         let snakeTabletScale = 1.0;
         let stickBurnProgress = 0.0;
         let activeSkyshotBarrel = -1;
+        let ladiBurstIdx = 0; // Tracks which crackers have exploded in Lavangi Maal
 
-        // C++ WebAssembly Physics Engine
+        // C++ WebAssembly Physics Engine (Running Silently in Background)
         const WASM_B64 = "''' + wasm_b64 + r'''";
         let wasmEngine = null;
 
@@ -751,7 +742,6 @@ html_content = r'''<!DOCTYPE html>
                     const bytes = await response.arrayBuffer();
                     const module = await WebAssembly.instantiate(bytes);
                     wasmEngine = module.instance.exports;
-                    console.log('⚡ C++ WASM Engine initialized from server file!');
                     return;
                 }
             } catch (e) {}
@@ -764,10 +754,7 @@ html_content = r'''<!DOCTYPE html>
                 }
                 const module = await WebAssembly.instantiate(bytes.buffer);
                 wasmEngine = module.instance.exports;
-                console.log('⚡ C++ WASM Engine initialized from embedded Base64 buffer!');
-            } catch (err) {
-                console.warn('WASM initialization fallback to JS engine:', err);
-            }
+            } catch (err) {}
         }
         initWasmEngine();
 
@@ -1101,7 +1088,7 @@ html_content = r'''<!DOCTYPE html>
             }
         });
 
-        // Ambient Background Stars
+        // Ambient Background Stars (Golden Stardust)
         const ambCanvas = document.getElementById('ambientCanvas');
         const ambCtx = ambCanvas.getContext('2d');
         let ambStars = [];
@@ -1128,7 +1115,7 @@ html_content = r'''<!DOCTYPE html>
             for (let s of ambStars) {
                 s.alpha += s.speed;
                 const a = (Math.sin(s.alpha) + 1) / 2;
-                ambCtx.fillStyle = `rgba(255, 215, 0, ${a * 0.55})`;
+                ambCtx.fillStyle = `rgba(255, 215, 0, ${a * 0.45})`;
                 ambCtx.beginPath();
                 ambCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
                 ambCtx.fill();
@@ -1321,8 +1308,7 @@ html_content = r'''<!DOCTYPE html>
         let shockwaveRadius = 0;
         let shockwaveAlpha = 0;
 
-        // Phuljhadi Direction Vector & Parametric Points
-        // Angle 55 degrees: stick runs from (stickX, stickY) down-left along this exact axis
+        // Phuljhadi Co-axial Geometry
         const STICK_DX = -0.573576; // -cos(55 deg)
         const STICK_DY = 0.819152;  // sin(55 deg)
         const STICK_TOTAL_LEN = 190;
@@ -1448,14 +1434,15 @@ html_content = r'''<!DOCTYPE html>
             const cx = canvas.width / 2;
 
             ctx.save();
-            ctx.strokeStyle = 'rgba(255, 215, 0, 0.28)';
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(15, groundY);
             ctx.lineTo(canvas.width - 15, groundY);
             ctx.stroke();
 
-            ctx.strokeStyle = 'rgba(255, 215, 0, 0.22)';
+            // Ground Rangoli
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.22)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.ellipse(cx, groundY + 14, 130, 32, 0, 0, Math.PI * 2);
@@ -1480,14 +1467,14 @@ html_content = r'''<!DOCTYPE html>
 
             if (bombExploded) {
                 ctx.save();
-                ctx.fillStyle = 'rgba(10, 10, 10, 0.9)';
+                ctx.fillStyle = 'rgba(5, 5, 5, 0.95)';
                 ctx.beginPath();
                 ctx.ellipse(cx, groundY + 6, 65, 18, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             }
 
-            // 1. PAUS (ANAR) - 110px TALL RICH TERRACOTTA CONE
+            // 1. PAUS (ANAR) - 110px TALL CONE, ZERO LOWER WICK BLEED
             if (currentCracker === 'anar') {
                 const potBaseY = groundY;
                 const potTopY = groundY - 110;
@@ -1495,7 +1482,7 @@ html_content = r'''<!DOCTYPE html>
                 const topW = 12;
 
                 ctx.save();
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
                 ctx.beginPath();
                 ctx.ellipse(cx, potBaseY + 4, baseW + 6, 12, 0, 0, Math.PI * 2);
                 ctx.fill();
@@ -1538,12 +1525,24 @@ html_content = r'''<!DOCTYPE html>
                 ctx.font = '7.5px sans-serif';
                 ctx.fillText('★ 30-FOOT SKY-HIGH ★', cx, potBaseY - 26);
 
-                ctx.strokeStyle = '#f1f5f9';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(cx, potTopY);
-                ctx.quadraticCurveTo(cx + 8, potTopY - 12, cx + 2, potTopY - 20);
-                ctx.stroke();
+                // ONLY DRAW WICK WHEN NOT BURNING (Prevents lower wick visual conflict!)
+                if (!isBurning) {
+                    ctx.strokeStyle = '#f1f5f9';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, potTopY);
+                    ctx.quadraticCurveTo(cx + 8, potTopY - 12, cx + 2, potTopY - 20);
+                    ctx.stroke();
+                } else {
+                    // White-hot incandescent glowing nozzle mouth
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.ellipse(cx, potTopY, topW + 1, 3.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffd700';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
 
                 ctx.restore();
             }
@@ -1556,7 +1555,7 @@ html_content = r'''<!DOCTYPE html>
                 const H = 14;
 
                 ctx.save();
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillStyle = 'rgba(0,0,0,0.65)';
                 ctx.beginPath();
                 ctx.ellipse(cx, wheelY + H + 4, Rx + 8, Ry + 4, 0, 0, Math.PI * 2);
                 ctx.fill();
@@ -1636,11 +1635,10 @@ html_content = r'''<!DOCTYPE html>
             else if (currentCracker === 'stick') {
                 ctx.save();
 
-                // Point at tip (s = 0) and bottom handle (s = 190)
                 const pTip = getStickPoint(0);
                 const pHandle = getStickPoint(STICK_TOTAL_LEN);
 
-                // Step 1: Draw the full straight steel wire (काठी)
+                // Step 1: Metallic Steel Wire (काठी)
                 ctx.strokeStyle = '#94a3b8';
                 ctx.lineWidth = 3.5;
                 ctx.lineCap = 'round';
@@ -1649,7 +1647,7 @@ html_content = r'''<!DOCTYPE html>
                 ctx.lineTo(pHandle.x, pHandle.y);
                 ctx.stroke();
 
-                // Step 2: Draw the thick granular chemical coating layer exactly over the wire
+                // Step 2: Co-axial Chemical Coating Layer
                 const currentBurnS = stickBurnProgress * STICK_COAT_LEN;
                 const pBurn = getStickPoint(currentBurnS);
                 const pCoatEnd = getStickPoint(STICK_COAT_LEN);
@@ -1662,14 +1660,13 @@ html_content = r'''<!DOCTYPE html>
                     coatGrad.addColorStop(1, '#94a3b8');
 
                     ctx.strokeStyle = coatGrad;
-                    ctx.lineWidth = 9.5; // Perfect uniform thickness
+                    ctx.lineWidth = 9.5;
                     ctx.lineCap = 'round';
                     ctx.beginPath();
                     ctx.moveTo(pCoatEnd.x, pCoatEnd.y);
                     ctx.lineTo(pBurn.x, pBurn.y);
                     ctx.stroke();
 
-                    // Subtle granular speckle texture along the coating
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
                     ctx.lineWidth = 1.8;
                     ctx.beginPath();
@@ -1722,7 +1719,7 @@ html_content = r'''<!DOCTYPE html>
 
                 ctx.beginPath();
                 ctx.moveTo(cx - bW, bY); ctx.lineTo(cx + bW, bY);
-                ctx.moveTo(cx, bY - bH); ctx.lineTo(cx, bY + bH);
+                ctx.moveTo(cx, bY - bH); ctx.lineTo(cx + bH, bY + bH);
                 ctx.moveTo(cx - bW, bY - 18); ctx.lineTo(cx + bW, bY - 18);
                 ctx.moveTo(cx - bW, bY + 18); ctx.lineTo(cx + bW, bY + 18);
                 ctx.moveTo(cx - 20, bY - bH); ctx.lineTo(cx - 20, bY + bH);
@@ -1814,7 +1811,7 @@ html_content = r'''<!DOCTYPE html>
                 ctx.restore();
             }
 
-            // 6. LAVANGI MAAL ("लवंगी माळ") - 18 AUTHENTIC RED CRACKERS GARLAND
+            // 6. LAVANGI MAAL ("लवंगी माळ") - VISIBLY BURNS & SHORTENS CRACKER BY CRACKER!
             else if (currentCracker === 'ladi') {
                 const lY = groundY - 16;
                 ctx.save();
@@ -1823,6 +1820,7 @@ html_content = r'''<!DOCTYPE html>
                 ctx.ellipse(cx, groundY + 4, 105, 10, 0, 0, Math.PI * 2);
                 ctx.fill();
 
+                // Connecting Fuse Cord
                 ctx.strokeStyle = '#22c55e';
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
@@ -1834,12 +1832,21 @@ html_content = r'''<!DOCTYPE html>
                     const lx = cx - 95 + (i * 11);
                     const ly = lY + Math.sin(i * 0.75) * 5;
 
-                    ctx.fillStyle = '#dc2626';
-                    ctx.fillRect(lx, ly, 8, 22);
+                    // If this cracker already exploded, draw charred ash mark!
+                    if (i < ladiBurstIdx) {
+                        ctx.fillStyle = 'rgba(20, 20, 20, 0.75)';
+                        ctx.fillRect(lx - 1, ly + 8, 10, 6);
+                        ctx.strokeStyle = 'rgba(70, 70, 70, 0.5)';
+                        ctx.strokeRect(lx - 1, ly + 8, 10, 6);
+                    } else {
+                        // Unexploded active red firecracker
+                        ctx.fillStyle = '#dc2626';
+                        ctx.fillRect(lx, ly, 8, 22);
 
-                    ctx.fillStyle = '#ffd700';
-                    ctx.fillRect(lx, ly + 2, 8, 3);
-                    ctx.fillRect(lx, ly + 17, 8, 3);
+                        ctx.fillStyle = '#ffd700';
+                        ctx.fillRect(lx, ly + 2, 8, 3);
+                        ctx.fillRect(lx, ly + 17, 8, 3);
+                    }
                 }
 
                 ctx.fillStyle = '#ffd700';
@@ -1981,6 +1988,7 @@ html_content = r'''<!DOCTYPE html>
             snakeTabletScale = 1.0;
             stickBurnProgress = 0.0;
             activeSkyshotBarrel = -1;
+            ladiBurstIdx = 0;
             chakriRPM = 0;
             bombExploded = false;
             bombFuseHeight = 36;
@@ -2009,7 +2017,7 @@ html_content = r'''<!DOCTYPE html>
             const groundY = canvas.height - 35;
 
             if (currentCracker === 'anar') {
-                // ANAR: SKY-HIGH FOUNTAIN SOARING RIGHT TO VERY TOP OF THE BOX SKY!
+                // ANAR: SKY-HIGH FOUNTAIN SHOOTING RIGHT TO VERY TOP OF THE BOX SKY!
                 const mouthX = cx;
                 const mouthY = groundY - 110;
                 sfx.playWhoosh();
@@ -2026,7 +2034,7 @@ html_content = r'''<!DOCTYPE html>
                         const isCore = Math.random() > 0.35;
                         particlePool.spawn(
                             mouthX + (Math.random() * 6 - 3),
-                            mouthY,
+                            mouthY - 2, // Strictly at or above the top rim!
                             isCore ? '#ffffff' : '#ffd700',
                             Math.cos(angle) * speed,
                             Math.sin(angle) * speed,
@@ -2087,7 +2095,6 @@ html_content = r'''<!DOCTYPE html>
                     const currentBurnS = stickBurnProgress * STICK_COAT_LEN;
                     const pBurn = getStickPoint(currentBurnS);
 
-                    // 360-degree needle star sparks radiating from exact burn point
                     for (let i = 0; i < 22; i++) {
                         const angle = Math.random() * Math.PI * 2;
                         const speed = Math.random() * 6.5 + 1.8;
@@ -2189,12 +2196,17 @@ html_content = r'''<!DOCTYPE html>
                 activeTimerIds.push(fuseTimer);
             }
             else if (currentCracker === 'ladi') {
-                // LAVANGI MAAL: MACHINE-GUN RAPID POPPING WITH ATOM-BOMB SPARKS & CONFETTI
+                // LAVANGI MAAL: VISIBLY BURNS DOWN & SHORTENS CRACKER BY CRACKER
                 let curIdx = 0;
+                ladiBurstIdx = 0;
+
                 const timer = setInterval(() => {
                     sfx.playPop();
                     const lx = cx - 95 + (curIdx * 11);
                     const ly = groundY - 16;
+
+                    // Update burst index so this cracker turns into charred ash
+                    ladiBurstIdx = curIdx + 1;
 
                     for (let i = 0; i < 28; i++) {
                         const angle = Math.random() * Math.PI * 2;
@@ -2212,7 +2224,7 @@ html_content = r'''<!DOCTYPE html>
                     if (curIdx >= 18) {
                         clearInterval(timer);
                         sfx.playBombBang();
-                        setTimeout(resetCracker, 1200);
+                        setTimeout(resetCracker, 1300);
                     }
                 }, 90);
                 activeTimerIds.push(timer);
@@ -2305,7 +2317,7 @@ html_content = r'''<!DOCTYPE html>
 
             const groundY = canvas.height - 35;
 
-            ctx.fillStyle = 'rgba(12, 3, 24, 0.28)';
+            ctx.fillStyle = 'rgba(8, 6, 2, 0.28)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (shockwaveAlpha > 0) {
