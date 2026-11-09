@@ -1540,7 +1540,7 @@
                 this.loader = null;
                 this.loadingKeys = {};
                 this.models = {};
-                this.currentKey = null;
+                this.currentKey = 'anar';
                 this.currentModel = null;
                 this.fuseLight = null;
                 this.isDragging = false;
@@ -1564,11 +1564,11 @@
                 this.isStriking = false;
 
                 this.modelConfigs = {
-                    anar: { url: 'models/anar.glb', targetH: 2.7, yOffset: 0.05, rotY: 0, fuseY: 2.7 },
-                    bomb: { url: 'models/diwali_cracker_atom_bomb.glb', fallbackUrl: 'models/bomb.glb', targetH: 2.1, yOffset: 0.05, rotY: 0.35, fuseY: 1.8 },
-                    rocket: { url: 'models/rocket.glb', targetH: 3.2, yOffset: 0.08, rotZ: Math.PI / 2, rotY: 0, fuseY: 1.2 },
-                    ladi: { url: 'models/ladi.glb', targetW: 4.5, yOffset: 0.05, rotY: 0, fuseY: 0.5 },
-                    skyshot: { url: 'models/bullet.glb', targetH: 1.8, yOffset: 0.05, rotZ: Math.PI / 2, rotY: 0, fuseY: 1.6 }
+                    anar: { url: 'models/anar.glb', targetH: 1.35, yOffset: 0.05, rotY: 0, fuseY: 1.40 },
+                    bomb: { url: 'models/diwali_cracker_atom_bomb.glb', fallbackUrl: 'models/bomb.glb', targetH: 1.15, yOffset: 0.05, rotY: 0.35, fuseY: 1.15 },
+                    rocket: { url: 'models/rocket.glb', targetH: 1.85, yOffset: 0.08, rotZ: Math.PI / 2, rotY: 0, fuseY: 0.75 },
+                    ladi: { url: 'models/ladi.glb', targetW: 2.30, yOffset: 0.05, rotY: 0, fuseY: 0.20 },
+                    skyshot: { url: 'models/bullet.glb', targetH: 1.10, yOffset: 0.05, rotZ: Math.PI / 2, rotY: 0, fuseY: 1.10 }
                 };
 
                 this.init();
@@ -1687,8 +1687,9 @@
                     this.resize();
                     this.animate();
 
-                    // Load props lazily
-                    this.loadActiveToolProps();
+                    // Preload ignition tools & explosion fireball
+                    this.loadMatchbox();
+                    this.loadLighter();
                     this.loadBlastEffect();
 
                     // Load current active section's model only!
@@ -1790,21 +1791,13 @@
 
             loadActiveToolProps() {
                 if (this.activeTool === 'match') {
-                    if (!this.matchboxGroup) {
-                        this.loadMatchbox();
-                    } else {
-                        this.matchboxGroup.visible = true;
-                        if (this.matchstickGroup) this.matchstickGroup.visible = true;
-                    }
+                    if (this.matchboxGroup) this.matchboxGroup.visible = true;
+                    if (this.matchstickGroup) this.matchstickGroup.visible = true;
                     if (this.lighterGroup) this.lighterGroup.visible = false;
                 } else if (this.activeTool === 'lighter') {
-                    if (!this.lighterGroup) {
-                        this.loadLighter();
-                    } else {
-                        this.lighterGroup.visible = true;
-                    }
                     if (this.matchboxGroup) this.matchboxGroup.visible = false;
                     if (this.matchstickGroup) this.matchstickGroup.visible = false;
+                    if (this.lighterGroup) this.lighterGroup.visible = true;
                 }
             }
 
@@ -1824,11 +1817,11 @@
                         box.position.z = -bCenter.z;
                         box.position.y = -bBox.min.y;
 
-                        const scale = 0.85 / Math.max(bSize.x, bSize.z);
+                        const scale = 0.52 / Math.max(bSize.x, bSize.z);
                         box.scale.setScalar(scale);
 
                         this.matchboxGroup.add(box);
-                        this.matchboxGroup.position.set(1.85, 0.02, 0.35);
+                        this.matchboxGroup.position.set(0.85, 0.02, 0.45);
                         this.matchboxGroup.rotation.set(-0.1, -0.45, 0.05);
                         this.matchboxGroup.visible = (this.activeTool === 'match');
                         this.scene.add(this.matchboxGroup);
@@ -1843,19 +1836,19 @@
                         stick.position.z = -sCenter.z;
                         stick.position.y = -sBox.min.y;
 
-                        const scale = 1.15 / Math.max(sSize.x, sSize.y, sSize.z);
+                        const scale = 0.55 / Math.max(sSize.x, sSize.y, sSize.z);
                         stick.scale.setScalar(scale);
 
                         this.matchstickGroup.add(stick);
-                        this.matchstickGroup.position.set(1.75, 0.06, 0.45);
+                        this.matchstickGroup.position.set(0.82, 0.06, 0.55);
                         this.matchstickGroup.rotation.set(-0.1, -0.45, 0.2);
                         this.matchstickGroup.visible = (this.activeTool === 'match');
 
-                        // Attach 3D Flame to match tip
+                        // Attach 3D Flame directly to the red match head
                         loader.load('models/flame.glb', (fGltf) => {
                             this.matchFlame = fGltf.scene;
                             this.matchFlame.scale.set(0.001, 0.001, 0.001);
-                            this.matchFlame.position.set(-0.55, 0.08, 0);
+                            this.matchFlame.position.set(0.275, 0.04, 0);
                             this.matchstickGroup.add(this.matchFlame);
                         });
 
@@ -1879,19 +1872,19 @@
                         lighter.position.z = -lCenter.z;
                         lighter.position.y = -lBox.min.y;
 
-                        const scale = 0.95 / Math.max(lSize.x, lSize.y, lSize.z);
+                        const scale = 0.62 / Math.max(lSize.x, lSize.y, lSize.z);
                         lighter.scale.setScalar(scale);
 
                         this.lighterGroup.add(lighter);
-                        this.lighterGroup.position.set(-1.85, 0.02, 0.35);
-                        this.lighterGroup.rotation.set(-0.1, 0.45, 0);
+                        this.lighterGroup.position.set(0.82, 0.02, 0.45);
+                        this.lighterGroup.rotation.set(-0.1, -0.45, 0);
                         this.lighterGroup.visible = (this.activeTool === 'lighter');
 
                         // Attach flame at lighter nozzle
                         loader.load('models/flame.glb', (fGltf) => {
                             this.lighterFlame = fGltf.scene;
                             this.lighterFlame.scale.set(0.001, 0.001, 0.001);
-                            this.lighterFlame.position.set(0, 0.92, 0);
+                            this.lighterFlame.position.set(0, 0.62, 0);
                             this.lighterGroup.add(this.lighterFlame);
                         });
 
@@ -1904,6 +1897,25 @@
             loadBlastEffect() {
                 if (this.blastGroup) return;
                 this.blastGroup = new THREE.Group();
+
+                const sphereGeo = new THREE.SphereGeometry(0.45, 24, 24);
+                const sphereMat = new THREE.MeshBasicMaterial({
+                    color: 0xff6600,
+                    transparent: true,
+                    opacity: 0.92
+                });
+                const coreSphere = new THREE.Mesh(sphereGeo, sphereMat);
+                this.blastGroup.add(coreSphere);
+
+                const innerGeo = new THREE.SphereGeometry(0.28, 20, 20);
+                const innerMat = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.95
+                });
+                const innerSphere = new THREE.Mesh(innerGeo, innerMat);
+                this.blastGroup.add(innerSphere);
+
                 this.getLoader((loader) => {
                     loader.load('models/flame.glb', (gltf) => {
                         const blast = gltf.scene;
@@ -1914,12 +1926,13 @@
                         blast.position.z = -bCenter.z;
 
                         this.blastGroup.add(blast);
-                        this.blastGroup.position.set(0, 0.45, 0);
-                        this.blastGroup.scale.set(0.001, 0.001, 0.001);
-                        this.blastGroup.visible = false;
-                        this.scene.add(this.blastGroup);
                     });
                 });
+
+                this.blastGroup.position.set(0, 0.55, 0);
+                this.blastGroup.scale.set(0.001, 0.001, 0.001);
+                this.blastGroup.visible = false;
+                this.scene.add(this.blastGroup);
             }
 
             selectTool(toolName) {
@@ -1929,17 +1942,48 @@
                 if (toolName === 'match') {
                     if (btnM) btnM.classList.add('active');
                     if (btnL) btnL.classList.remove('active');
+                    if (this.matchboxGroup) this.matchboxGroup.visible = true;
+                    if (this.matchstickGroup) this.matchstickGroup.visible = true;
+                    if (this.lighterGroup) this.lighterGroup.visible = false;
                 } else {
                     if (btnM) btnM.classList.remove('active');
                     if (btnL) btnL.classList.add('active');
+                    if (this.matchboxGroup) this.matchboxGroup.visible = false;
+                    if (this.matchstickGroup) this.matchstickGroup.visible = false;
+                    if (this.lighterGroup) this.lighterGroup.visible = true;
                 }
                 haptic(15);
-                this.loadActiveToolProps();
+            }
+
+            getFuseWorldPos() {
+                const key = this.currentKey || currentCracker;
+                const cfg = this.modelConfigs[key] || {};
+                const fuseY = cfg.fuseY || 1.35;
+                const v = new THREE.Vector3(0, fuseY, 0);
+                if (this.currentModel && this.currentModel.pivot) {
+                    v.applyMatrix4(this.currentModel.pivot.matrixWorld);
+                }
+                return v;
+            }
+
+            getCrackerTipScreenPos() {
+                if (!this.camera || !this.currentModel) return null;
+                const pos = this.getFuseWorldPos();
+                pos.project(this.camera);
+                const rect = (typeof canvas !== 'undefined' && canvas) ? canvas : this.canvas;
+                const w = rect ? (rect.width || 440) : 440;
+                const h = rect ? (rect.height || 340) : 340;
+                return {
+                    x: ((pos.x + 1) / 2) * w,
+                    y: ((-pos.y + 1) / 2) * h
+                };
             }
 
             strikeActiveTool(onIgnite) {
                 if (this.isStriking) return;
                 this.isStriking = true;
+
+                const fusePos = this.getFuseWorldPos();
 
                 if (this.activeTool === 'match' && this.matchstickGroup) {
                     sfx.playMatchStrike();
@@ -1949,20 +1993,19 @@
                     let step = 0;
                     const strikeTimer = setInterval(() => {
                         step++;
-                        this.matchstickGroup.position.x += 0.04;
+                        this.matchstickGroup.position.x += 0.03;
                         if (step >= 5) {
                             clearInterval(strikeTimer);
                             sfx.playFlameCatch();
                             if (this.matchFlame) {
-                                this.matchFlame.scale.set(0.24, 0.28, 0.24);
+                                this.matchFlame.scale.set(0.08, 0.09, 0.08);
                             }
                             if (this.fuseLight) {
                                 this.fuseLight.intensity = 2.0;
                                 this.fuseLight.position.set(this.matchstickGroup.position.x, this.matchstickGroup.position.y + 0.3, this.matchstickGroup.position.z);
                             }
 
-                            const fuseY = (this.modelConfigs[currentCracker]?.fuseY) || 1.4;
-                            const targetPos = new THREE.Vector3(0.12, fuseY, 0.2);
+                            const targetPos = new THREE.Vector3(fusePos.x + 0.15, fusePos.y, fusePos.z + 0.15);
 
                             let glideStep = 0;
                             const glideTimer = setInterval(() => {
@@ -2007,21 +2050,20 @@
                     setTimeout(() => {
                         sfx.playFlameCatch();
                         if (this.lighterFlame) {
-                            this.lighterFlame.scale.set(0.24, 0.28, 0.24);
+                            this.lighterFlame.scale.set(0.09, 0.11, 0.09);
                         }
                         if (this.fuseLight) {
                             this.fuseLight.intensity = 2.2;
                             this.fuseLight.position.set(this.lighterGroup.position.x, this.lighterGroup.position.y + 0.4, this.lighterGroup.position.z);
                         }
 
-                        const fuseY = (this.modelConfigs[currentCracker]?.fuseY) || 1.4;
-                        const targetPos = new THREE.Vector3(-0.15, fuseY, 0.2);
+                        const targetPos = new THREE.Vector3(fusePos.x + 0.12, fusePos.y - 0.45, fusePos.z + 0.15);
 
                         let glideStep = 0;
                         const glideTimer = setInterval(() => {
                             glideStep++;
                             this.lighterGroup.position.lerp(targetPos, 0.25);
-                            this.lighterGroup.rotation.z = -0.35;
+                            this.lighterGroup.rotation.z = -0.25;
 
                             if (glideStep >= 12) {
                                 clearInterval(glideTimer);
@@ -2061,7 +2103,7 @@
                 this.isBlasting = true;
                 this.blastProgress = 0;
                 this.blastGroup.visible = true;
-                this.blastGroup.scale.set(0.2, 0.2, 0.2);
+                this.blastGroup.scale.set(0.1, 0.1, 0.1);
             }
 
             // SWITCH TO CRACKER SECTION: Lazy-loads model only when entering this section!
@@ -2095,7 +2137,7 @@
             }
 
             isModelActive(key) {
-                return !!(this.models[key] && this.models[key].pivot && this.models[key].pivot.visible);
+                return !!(this.models[key] && this.currentKey === key);
             }
 
             shakeBomb(amount = 0.08) {
@@ -2106,6 +2148,10 @@
                 this.shakeIntensity = 0;
                 if (this.currentModel && this.currentModel.pivot) {
                     this.currentModel.pivot.visible = false;
+                }
+                if (this.fuseLight) {
+                    this.fuseLight.intensity = 15.0;
+                    this.fuseLight.color.setHex(0xffaa22);
                 }
                 this.triggerBlast();
             }
@@ -2207,13 +2253,13 @@
 
                 // Animate 3D Explosion Fireball
                 if (this.isBlasting && this.blastGroup) {
-                    this.blastProgress += 0.045;
-                    const scale = Math.sin(Math.min(1.0, this.blastProgress) * Math.PI) * 3.6;
-                    this.blastGroup.scale.set(scale, scale * 1.15, scale);
-                    this.blastGroup.rotation.y += 0.09;
+                    this.blastProgress += 0.04;
+                    const scale = Math.sin(Math.min(1.0, this.blastProgress) * Math.PI) * 4.2;
+                    this.blastGroup.scale.set(scale, scale * 1.25, scale);
+                    this.blastGroup.rotation.y += 0.12;
 
                     if (this.fuseLight) {
-                        this.fuseLight.intensity = Math.max(0, (1 - this.blastProgress) * 6.0);
+                        this.fuseLight.intensity = Math.max(0, (1 - this.blastProgress) * 15.0);
                     }
 
                     if (this.blastProgress >= 1.0) {
@@ -2523,7 +2569,7 @@
         // 3D HIGH-DEFINITION CRACKER RENDERING ENGINE
         // ========================================================
         function drawCrackerStudio(groundY) {
-            const is3DActive = typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker);
+            const is3DActive = typeof studio3D !== 'undefined' && studio3D && (studio3D.isModelActive(currentCracker) || studio3D.isBlasting);
             const cx = canvas.width / 2;
 
             if (!is3DActive) {
@@ -3122,9 +3168,10 @@
             const groundY = canvas.height - 35;
 
             if (currentCracker === 'anar') {
-                // ANAR: SKY-HIGH FOUNTAIN SHOOTING RIGHT TO VERY TOP OF THE BOX SKY!
-                const mouthX = cx;
-                const mouthY = groundY - 110;
+                // ANAR: SKY-HIGH FOUNTAIN SHOOTING RIGHT FROM THE TOP OF THE 3D CONE!
+                const tip = (typeof studio3D !== 'undefined' && studio3D) ? studio3D.getCrackerTipScreenPos() : null;
+                const mouthX = tip ? tip.x : cx;
+                const mouthY = tip ? tip.y : (groundY - 110);
                 sfx.playAnarFountain();
 
                 let frame = 0;
@@ -3235,9 +3282,13 @@
                     }
                     bombFuseHeight = Math.max(0, 36 - (fuseProgress * 0.95));
 
+                    const tip = (typeof studio3D !== 'undefined' && studio3D) ? studio3D.getCrackerTipScreenPos() : null;
+                    const sparkX = tip ? tip.x : (cx + 6);
+                    const sparkY = tip ? (tip.y + (36 - bombFuseHeight) * 0.45) : (bY - bH - bombFuseHeight);
+
                     particlePool.spawn(
-                        cx + 6,
-                        bY - bH - bombFuseHeight,
+                        sparkX,
+                        sparkY,
                         '#ff4500',
                         (Math.random() - 0.5) * 2,
                         (Math.random() - 0.5) * 2,
@@ -3258,17 +3309,20 @@
                         shockwaveRadius = 15;
                         shockwaveAlpha = 0.95;
 
-                        for (let i = 0; i < 200; i++) {
+                        const blastX = tip ? tip.x : cx;
+                        const blastY = tip ? (tip.y + 25) : bY;
+
+                        for (let i = 0; i < 220; i++) {
                             const angle = Math.random() * Math.PI * 2;
-                            const speed = Math.random() * 12 + 2.5;
-                            const color = (i % 3 === 0) ? '#1c422c' : ((i % 3 === 1) ? '#ff8c00' : '#ffffff');
+                            const speed = Math.random() * 13 + 3.0;
+                            const color = (i % 4 === 0) ? '#ffcc00' : ((i % 4 === 1) ? '#ff4500' : ((i % 4 === 2) ? '#ffffff' : '#2e7d32'));
                             particlePool.spawn(
-                                cx,
-                                bY,
+                                blastX,
+                                blastY,
                                 color,
                                 Math.cos(angle) * speed,
                                 Math.sin(angle) * speed,
-                                0.93, 0.22, 0.02, true, 3.4
+                                0.92, 0.22, 0.018, true, 3.6
                             );
                         }
 
@@ -3430,7 +3484,7 @@
 
             const groundY = canvas.height - 35;
 
-            const is3DActive = typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker);
+            const is3DActive = typeof studio3D !== 'undefined' && studio3D && (studio3D.isModelActive(currentCracker) || studio3D.isBlasting);
 
             if (is3DActive) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
