@@ -11,6 +11,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Tiro+Devanagari+Marathi:ital@0;1&family=Yatra+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Three.js 3D Engine & GLTF Loader -->
+    <script src="js/three.min.js"></script>
+    <script>
+    if (typeof THREE === 'undefined') {
+        document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+    }
+    </script>
+    <script src="js/GLTFLoader.js"></script>
+    <script>
+    if (typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>');
+    }
+    </script>
+
     <style>
         :root {
             /* Professional Black & Premium Gold Palette */
@@ -279,12 +293,33 @@
             margin: 3px 0;
         }
 
+        #webglCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+            cursor: grab;
+            z-index: 2;
+        }
+
+        #webglCanvas:active {
+            cursor: grabbing;
+        }
+
         #mainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             display: block;
             touch-action: none;
             cursor: pointer;
+            z-index: 4;
+            pointer-events: none;
         }
 
         .stage-hud {
@@ -621,6 +656,7 @@
             <i class="fas fa-hand-pointer"></i> <span id="lblDragHint">फुलबाजा फिरवण्यासाठी स्क्रीनवर ड्रॅग करा</span>
         </div>
 
+        <canvas id="webglCanvas"></canvas>
         <canvas id="mainCanvas"></canvas>
     </main>
 
@@ -1407,6 +1443,365 @@
         window.addEventListener('load', resizeMainCanvas);
         resizeMainCanvas();
 
+        // ========================================================
+        // AUTHENTIC 3D CRACKER STUDIO ENGINE (Three.js WebGL)
+        // Loaded directly from Diwali+crackers.blend & CGTrader GLBs
+        // ========================================================
+        class Studio3D {
+            constructor() {
+                this.canvas = document.getElementById('webglCanvas');
+                this.container = document.getElementById('stageBox');
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.loader = null;
+                this.models = {};
+                this.currentKey = null;
+                this.currentModel = null;
+                this.fuseLight = null;
+                this.isDragging = false;
+                this.prevPointerX = 0;
+                this.autoRotate = true;
+                this.idleTimer = null;
+                this.shakeIntensity = 0;
+                this.rocketSpeed = 0;
+                this.isRocketLaunching = false;
+
+                this.modelConfigs = {
+                    anar: {
+                        url: 'models/anar.glb',
+                        targetH: 2.7,
+                        yOffset: 0.05,
+                        rotY: 0
+                    },
+                    bomb: {
+                        url: 'models/diwali_cracker_atom_bomb.glb',
+                        fallbackUrl: 'models/bomb.glb',
+                        targetH: 2.1,
+                        yOffset: 0.05,
+                        rotY: 0.35
+                    },
+                    rocket: {
+                        url: 'models/rocket.glb',
+                        targetH: 3.5,
+                        yOffset: 0.08,
+                        rotY: 0
+                    },
+                    ladi: {
+                        url: 'models/ladi.glb',
+                        targetW: 4.5,
+                        yOffset: 0.05,
+                        rotY: 0
+                    },
+                    skyshot: {
+                        url: 'models/bullet.glb',
+                        targetH: 2.2,
+                        yOffset: 0.05,
+                        rotY: 0
+                    }
+                };
+
+                this.init();
+            }
+
+            init() {
+                if (typeof THREE === 'undefined') {
+                    setTimeout(() => this.init(), 80);
+                    return;
+                }
+                try {
+                    const rect = this.container.getBoundingClientRect();
+                    const w = Math.floor(rect.width || this.container.clientWidth || window.innerWidth || 440);
+                    const h = Math.floor(rect.height || this.container.clientHeight || 340);
+
+                    this.scene = new THREE.Scene();
+
+                    this.camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+                    this.camera.position.set(0, 1.8, 5.2);
+                    this.camera.lookAt(0, 0.95, 0);
+
+                    this.renderer = new THREE.WebGLRenderer({
+                        canvas: this.canvas,
+                        alpha: true,
+                        antialias: true,
+                        powerPreference: 'high-performance'
+                    });
+                    this.renderer.setSize(w, h, false);
+                    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                    this.renderer.toneMappingExposure = 1.25;
+
+                    // Studio Illumination: Warm Festive 24K Gold & Obsidian Palette
+                    const ambient = new THREE.AmbientLight(0xffecd2, 1.25);
+                    this.scene.add(ambient);
+
+                    const keyLight = new THREE.DirectionalLight(0xfff7e6, 1.8);
+                    keyLight.position.set(3, 8, 4.5);
+                    this.scene.add(keyLight);
+
+                    const rimLight = new THREE.DirectionalLight(0xffd700, 1.1);
+                    rimLight.position.set(-3.5, 4, -3);
+                    this.scene.add(rimLight);
+
+                    const fillLight = new THREE.DirectionalLight(0x78350f, 0.6);
+                    fillLight.position.set(0, -4, 3);
+                    this.scene.add(fillLight);
+
+                    // Dynamic Fuse Light
+                    this.fuseLight = new THREE.PointLight(0xff6600, 0, 4.5);
+                    this.fuseLight.position.set(0, 1.8, 0);
+                    this.scene.add(this.fuseLight);
+
+                    // Golden Pedestal Ring on Floor
+                    const ringGeo = new THREE.RingGeometry(1.6, 1.7, 48);
+                    const ringMat = new THREE.MeshBasicMaterial({
+                        color: 0xd4af37,
+                        transparent: true,
+                        opacity: 0.22,
+                        side: THREE.DoubleSide
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = -Math.PI / 2;
+                    ring.position.y = 0.01;
+                    this.scene.add(ring);
+
+                    const innerRingGeo = new THREE.RingGeometry(0.85, 0.92, 40);
+                    const innerRingMat = new THREE.MeshBasicMaterial({
+                        color: 0xef4444,
+                        transparent: true,
+                        opacity: 0.18,
+                        side: THREE.DoubleSide
+                    });
+                    const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+                    innerRing.rotation.x = -Math.PI / 2;
+                    innerRing.position.y = 0.015;
+                    this.scene.add(innerRing);
+
+                    if (typeof THREE.GLTFLoader !== 'undefined') {
+                        this.loader = new THREE.GLTFLoader();
+                    }
+
+                    this.bindPointerEvents();
+                    window.addEventListener('resize', () => this.resize());
+                    this.resize();
+                    this.animate();
+
+                    // Preload all 3D models smoothly in background
+                    this.preloadAll();
+                } catch (e) {
+                    console.warn('Three.js studio error:', e);
+                }
+            }
+
+            resize() {
+                if (!this.renderer || !this.camera || !this.container) return;
+                const rect = this.container.getBoundingClientRect();
+                const w = Math.floor(rect.width || this.container.clientWidth || 440);
+                const h = Math.floor(rect.height || this.container.clientHeight || 340);
+                if (w > 50 && h > 50) {
+                    this.camera.aspect = w / h;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(w, h, false);
+                }
+            }
+
+            preloadAll() {
+                for (const key of Object.keys(this.modelConfigs)) {
+                    this.loadModel(key);
+                }
+            }
+
+            loadModel(key) {
+                if (!this.loader || this.models[key] || !this.modelConfigs[key]) return;
+                const cfg = this.modelConfigs[key];
+
+                const doLoad = (url) => {
+                    this.loader.load(url, (gltf) => {
+                        const root = gltf.scene;
+
+                        // Calculate Bounding Box
+                        const box = new THREE.Box3().setFromObject(root);
+                        const size = box.getSize(new THREE.Vector3());
+                        const center = box.getCenter(new THREE.Vector3());
+
+                        // Shift geometry so base rests at Y = 0 and is centered on X and Z
+                        root.position.x = -center.x;
+                        root.position.z = -center.z;
+                        root.position.y = -box.min.y + (cfg.yOffset || 0);
+
+                        // Scale to fit stage
+                        let targetDim = cfg.targetW || cfg.targetH || 2.5;
+                        let refDim = cfg.targetW ? Math.max(size.x, size.z) : Math.max(size.x, size.y, size.z);
+                        const scale = refDim > 0 ? (targetDim / refDim) : 1.0;
+
+                        const pivot = new THREE.Group();
+                        pivot.add(root);
+                        pivot.scale.setScalar(scale);
+                        pivot.rotation.y = cfg.rotY || 0;
+                        pivot.visible = (this.currentKey === key);
+
+                        this.scene.add(pivot);
+                        this.models[key] = {
+                            pivot: pivot,
+                            root: root,
+                            cfg: cfg,
+                            baseRotY: cfg.rotY || 0,
+                            baseScale: scale
+                        };
+
+                        if (this.currentKey === key) {
+                            this.currentModel = this.models[key];
+                        }
+                    }, undefined, (err) => {
+                        if (cfg.fallbackUrl && url !== cfg.fallbackUrl) {
+                            doLoad(cfg.fallbackUrl);
+                        }
+                    });
+                };
+
+                doLoad(cfg.url);
+            }
+
+            switchModel(key) {
+                this.currentKey = key;
+                this.reset();
+
+                // Hide all models
+                for (const k in this.models) {
+                    if (this.models[k] && this.models[k].pivot) {
+                        this.models[k].pivot.visible = false;
+                    }
+                }
+
+                if (this.models[key]) {
+                    this.currentModel = this.models[key];
+                    this.currentModel.pivot.visible = true;
+                    this.currentModel.pivot.position.set(0, 0, 0);
+                    this.currentModel.pivot.rotation.y = this.models[key].baseRotY || 0;
+                } else if (this.modelConfigs[key]) {
+                    this.loadModel(key);
+                } else {
+                    this.currentModel = null;
+                }
+            }
+
+            isModelActive(key) {
+                return !!(this.models[key] && this.models[key].pivot && this.models[key].pivot.visible);
+            }
+
+            shakeBomb(amount = 0.08) {
+                this.shakeIntensity = amount;
+            }
+
+            explodeBomb() {
+                this.shakeIntensity = 0;
+                if (this.currentModel && this.currentModel.pivot) {
+                    this.currentModel.pivot.visible = false;
+                }
+            }
+
+            launchRocket() {
+                this.isRocketLaunching = true;
+                this.rocketSpeed = 0.05;
+            }
+
+            reset() {
+                this.shakeIntensity = 0;
+                this.isRocketLaunching = false;
+                this.rocketSpeed = 0;
+                if (this.fuseLight) {
+                    this.fuseLight.intensity = 0;
+                }
+                if (this.currentModel && this.currentModel.pivot) {
+                    this.currentModel.pivot.visible = true;
+                    this.currentModel.pivot.position.set(0, 0, 0);
+                    this.currentModel.pivot.rotation.y = this.currentModel.baseRotY || 0;
+                }
+            }
+
+            bindPointerEvents() {
+                const onStart = (cx) => {
+                    this.isDragging = true;
+                    this.prevPointerX = cx;
+                    this.autoRotate = false;
+                };
+
+                const onMove = (cx) => {
+                    if (!this.isDragging || !this.currentModel || !this.currentModel.pivot) return;
+                    const dx = cx - this.prevPointerX;
+                    this.prevPointerX = cx;
+                    this.currentModel.pivot.rotation.y += dx * 0.009;
+                };
+
+                const onEnd = () => {
+                    this.isDragging = false;
+                    clearTimeout(this.idleTimer);
+                    this.idleTimer = setTimeout(() => {
+                        this.autoRotate = true;
+                    }, 2400);
+                };
+
+                this.container.addEventListener('pointerdown', (e) => {
+                    if (currentCracker !== 'stick') {
+                        onStart(e.clientX);
+                    }
+                });
+
+                window.addEventListener('pointermove', (e) => {
+                    if (currentCracker !== 'stick' && this.isDragging) {
+                        onMove(e.clientX);
+                    }
+                });
+
+                window.addEventListener('pointerup', onEnd);
+                window.addEventListener('pointercancel', onEnd);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                if (this.currentModel && this.currentModel.pivot && this.currentModel.pivot.visible) {
+                    // Smooth idle turntable spin
+                    if (this.autoRotate && !isBurning) {
+                        this.currentModel.pivot.rotation.y += 0.005;
+                    }
+
+                    // Sizzling bomb shake
+                    if (this.shakeIntensity > 0) {
+                        this.currentModel.pivot.position.x = (Math.random() - 0.5) * this.shakeIntensity;
+                        this.currentModel.pivot.position.z = (Math.random() - 0.5) * this.shakeIntensity;
+                    } else if (!this.isRocketLaunching) {
+                        this.currentModel.pivot.position.x = 0;
+                        this.currentModel.pivot.position.z = 0;
+                    }
+
+                    // 3D Rocket flight
+                    if (this.isRocketLaunching) {
+                        this.rocketSpeed += 0.06;
+                        this.currentModel.pivot.position.y += this.rocketSpeed;
+                        if (this.currentModel.pivot.position.y > 10) {
+                            this.currentModel.pivot.visible = false;
+                            this.isRocketLaunching = false;
+                        }
+                    }
+                }
+
+                // Fuse burning light flicker
+                if (this.fuseLight) {
+                    if (isBurning && !bombExploded) {
+                        this.fuseLight.intensity = 1.8 + Math.random() * 1.5;
+                    } else {
+                        this.fuseLight.intensity = 0;
+                    }
+                }
+
+                if (this.renderer && this.scene && this.camera) {
+                    this.renderer.render(this.scene, this.camera);
+                }
+            }
+        }
+        const studio3D = new Studio3D();
+
         class ParticlePool {
             constructor(size = 1200) {
                 this.pool = new Array(size);
@@ -1737,8 +2132,10 @@
                 ctx.restore();
             }
 
+            const is3DActive = typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker);
+
             // 1. PAUS (ANAR) - 110px TALL CONE, ZERO LOWER WICK BLEED
-            if (currentCracker === 'anar') {
+            if (currentCracker === 'anar' && !is3DActive) {
                 const potBaseY = groundY;
                 const potTopY = groundY - 110;
                 const baseW = 42;
@@ -1962,7 +2359,7 @@
             }
 
             // 4. SUTLI BOMB - 84x76px CHUNKY JUTE TWINE CUBE (NO 1000 WATT)
-            else if (currentCracker === 'bomb' && !bombExploded) {
+            else if (currentCracker === 'bomb' && !bombExploded && !is3DActive) {
                 const bY = groundY - 38;
                 const bW = 42;
                 const bH = 38;
@@ -2017,7 +2414,7 @@
             }
 
             // 5. ROCKET - REALISTIC GLASS BOTTLE & ROCKET
-            else if (currentCracker === 'rocket') {
+            else if (currentCracker === 'rocket' && !is3DActive) {
                 const botY = groundY - 50;
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -2075,7 +2472,7 @@
             }
 
             // 6. LAVANGI MAAL ("लवंगी माळ") - VISIBLY BURNS & SHORTENS CRACKER BY CRACKER!
-            else if (currentCracker === 'ladi') {
+            else if (currentCracker === 'ladi' && !is3DActive) {
                 const lY = groundY - 16;
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -2156,7 +2553,7 @@
             }
 
             // 8. NEXT-LEVEL 7-SHOT ROYAL CAKE BATTERY BOX (TOF)
-            else if (currentCracker === 'skyshot') {
+            else if (currentCracker === 'skyshot' && !is3DActive) {
                 const boxW = 54;
                 const boxH = 68;
                 const boxY = groundY - boxH;
@@ -2232,6 +2629,10 @@
             resetCracker();
             currentCracker = type;
 
+            if (typeof studio3D !== 'undefined' && studio3D) {
+                studio3D.switchModel(type);
+            }
+
             document.querySelectorAll('.cracker-card').forEach(c => c.classList.remove('active'));
             const target = Array.from(document.querySelectorAll('.cracker-card')).find(c => c.getAttribute('onclick')?.includes(type));
             if (target) target.classList.add('active');
@@ -2262,6 +2663,10 @@
             stickX = canvas.width / 2;
             stickY = canvas.height * 0.52;
             updateStatusText();
+
+            if (typeof studio3D !== 'undefined' && studio3D) {
+                studio3D.reset();
+            }
         }
 
         // ========================================================
@@ -2389,7 +2794,10 @@
                 const bH = 38;
                 const timer = setInterval(() => {
                     fuseProgress++;
-                    if (fuseProgress % 4 === 0) sfx.playFuse();
+                    if (fuseProgress % 4 === 0) {
+                        sfx.playFuse();
+                        if (typeof studio3D !== 'undefined' && studio3D) studio3D.shakeBomb(0.04 + (fuseProgress / 40) * 0.08);
+                    }
                     bombFuseHeight = Math.max(0, 36 - (fuseProgress * 0.95));
 
                     particlePool.spawn(
@@ -2404,6 +2812,7 @@
                     if (bombFuseHeight <= 0) {
                         clearInterval(timer);
                         bombExploded = true;
+                        if (typeof studio3D !== 'undefined' && studio3D) studio3D.explodeBomb();
 
                         triggerScreenFlash();
                         sfx.playSutliBomb();
@@ -2453,6 +2862,7 @@
                         clearInterval(fuseTimer);
 
                         rocketInBottle = false;
+                        if (typeof studio3D !== 'undefined' && studio3D) studio3D.launchRocket();
                         sfx.playRocketLaunch();
                         const targetX = cx;
                         const targetY = canvas.height * 0.15;
@@ -2673,16 +3083,18 @@
 
         function updateStickPointer(e) {
             if (currentCracker !== 'stick') return;
-            const rect = canvas.getBoundingClientRect();
-            stickX = e.clientX - rect.left;
-            stickY = e.clientY - rect.top;
+            const rect = stageBox.getBoundingClientRect();
+            stickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            stickY = (e.clientY - rect.top) * (canvas.height / rect.height);
         }
 
-        canvas.addEventListener('pointerdown', (e) => {
-            isDraggingStick = true;
-            updateStickPointer(e);
-            if (!isBurning) {
-                igniteCracker();
+        stageBox.addEventListener('pointerdown', (e) => {
+            if (currentCracker === 'stick') {
+                isDraggingStick = true;
+                updateStickPointer(e);
+                if (!isBurning) {
+                    igniteCracker();
+                }
             }
         });
 
