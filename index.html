@@ -363,6 +363,43 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
         }
 
+        .ignition-tool-selector {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            background: rgba(14, 11, 4, 0.88);
+            border: 1.2px solid var(--gold-border);
+            padding: 2px 6px;
+            border-radius: 16px;
+            z-index: 15;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
+        }
+
+        .tool-btn {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            padding: 2px 9px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: auto;
+        }
+
+        .tool-btn.active {
+            background: var(--gold-grad);
+            color: #000;
+            font-weight: 800;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.45);
+        }
+
         .status-badge .dot {
             width: 7px;
             height: 7px;
@@ -652,6 +689,15 @@
             </div>
         </div>
 
+        <div class="ignition-tool-selector" id="ignitionToolPill">
+            <div class="tool-btn active" id="toolBtnMatch" onclick="if(typeof studio3D!=='undefined')studio3D.selectTool('match')">
+                <i class="fas fa-box"></i> <span id="lblToolMatch">माचिस</span>
+            </div>
+            <div class="tool-btn" id="toolBtnLighter" onclick="if(typeof studio3D!=='undefined')studio3D.selectTool('lighter')">
+                <i class="fas fa-fire-flame-simple"></i> <span id="lblToolLighter">लाइटर</span>
+            </div>
+        </div>
+
         <div class="drag-hint" id="dragHint">
             <i class="fas fa-hand-pointer"></i> <span id="lblDragHint">फुलबाजा फिरवण्यासाठी स्क्रीनवर ड्रॅग करा</span>
         </div>
@@ -789,6 +835,8 @@
                 burningStatus: "धडाका सुरू आहे...!",
                 dragHint: "फुलबाजा फिरवण्यासाठी स्क्रीनवर ड्रॅग करा",
                 pickerTitle: "फटाका निवडा (SELECT CRACKER):",
+                toolMatch: "माचिस (Match)",
+                toolLighter: "लाइटर (Lighter)",
                 crackers: {
                     anar: { name: "पाऊस", sub: "Flower Pot", badge: "पाऊस (Paus Fountain)" },
                     chakri: { name: "चक्र", sub: "Ground Spinner", badge: "चक्र (Ground Chakra)" },
@@ -818,6 +866,8 @@
                 burningStatus: "Firing in progress...!",
                 dragHint: "Drag on screen to move the sparkler stick",
                 pickerTitle: "CHOOSE YOUR CRACKER:",
+                toolMatch: "Matchbox",
+                toolLighter: "Zippo Lighter",
                 crackers: {
                     anar: { name: "Flower Pot", sub: "Paus Fountain", badge: "Flower Pot (Paus Fountain)" },
                     chakri: { name: "Chakra", sub: "Ground Spinner", badge: "Ground Chakra (Spinner)" },
@@ -853,6 +903,12 @@
 
             const elDrag = document.getElementById('lblDragHint');
             if (elDrag) elDrag.innerText = data.dragHint;
+
+            const elToolMatch = document.getElementById('lblToolMatch');
+            if (elToolMatch && data.toolMatch) elToolMatch.innerText = data.toolMatch;
+
+            const elToolLighter = document.getElementById('lblToolLighter');
+            if (elToolLighter && data.toolLighter) elToolLighter.innerText = data.toolLighter;
 
             const elPicker = document.getElementById('lblPickerTitle');
             if (elPicker) elPicker.innerHTML = `<i class="fas fa-boxes-stacked"></i> ${data.pickerTitle}`;
@@ -1014,6 +1070,28 @@
                 } catch (e) {
                     return false;
                 }
+            }
+
+            playMatchStrike() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    haptic([25, 30, 45]);
+                    if (!this.playSample('match', { volume: 0.95, rate: 1.0 })) {
+                        this.playFuse();
+                    }
+                } catch (e) {}
+            }
+
+            playFlameCatch() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    haptic(35);
+                    if (!this.playSample('flame', { volume: 0.9, rate: 1.05 })) {
+                        this.playCrackle();
+                    }
+                } catch (e) {}
             }
 
             // 1. REAL FUSE SIZZLE (Real ignite spark + high-pass sizzle + tactile ticks)
@@ -1445,7 +1523,8 @@
 
         // ========================================================
         // AUTHENTIC 3D CRACKER STUDIO ENGINE (Three.js WebGL)
-        // Loaded directly from Diwali+crackers.blend & CGTrader GLBs
+        // Loaded directly from Diwali+crackers.blend & Diwali assets
+        // (Includes 3D Matchbox, Matchstick, Zippo Lighter & 3D Flame)
         // ========================================================
         class Studio3D {
             constructor() {
@@ -1467,38 +1546,24 @@
                 this.rocketSpeed = 0;
                 this.isRocketLaunching = false;
 
+                // Interactive Ignition Tools (Matchbox & Lighter)
+                this.activeTool = 'match';
+                this.matchboxGroup = null;
+                this.matchstickGroup = null;
+                this.matchFlame = null;
+                this.lighterGroup = null;
+                this.lighterFlame = null;
+                this.blastGroup = null;
+                this.isBlasting = false;
+                this.blastProgress = 0;
+                this.isStriking = false;
+
                 this.modelConfigs = {
-                    anar: {
-                        url: 'models/anar.glb',
-                        targetH: 2.7,
-                        yOffset: 0.05,
-                        rotY: 0
-                    },
-                    bomb: {
-                        url: 'models/diwali_cracker_atom_bomb.glb',
-                        fallbackUrl: 'models/bomb.glb',
-                        targetH: 2.1,
-                        yOffset: 0.05,
-                        rotY: 0.35
-                    },
-                    rocket: {
-                        url: 'models/rocket.glb',
-                        targetH: 3.5,
-                        yOffset: 0.08,
-                        rotY: 0
-                    },
-                    ladi: {
-                        url: 'models/ladi.glb',
-                        targetW: 4.5,
-                        yOffset: 0.05,
-                        rotY: 0
-                    },
-                    skyshot: {
-                        url: 'models/bullet.glb',
-                        targetH: 2.2,
-                        yOffset: 0.05,
-                        rotY: 0
-                    }
+                    anar: { url: 'models/anar.glb', targetH: 2.7, yOffset: 0.05, rotY: 0, fuseY: 2.7 },
+                    bomb: { url: 'models/diwali_cracker_atom_bomb.glb', fallbackUrl: 'models/bomb.glb', targetH: 2.1, yOffset: 0.05, rotY: 0.35, fuseY: 1.8 },
+                    rocket: { url: 'models/rocket.glb', targetH: 3.5, yOffset: 0.08, rotY: 0, fuseY: 1.2 },
+                    ladi: { url: 'models/ladi.glb', targetW: 4.5, yOffset: 0.05, rotY: 0, fuseY: 0.5 },
+                    skyshot: { url: 'models/bullet.glb', targetH: 2.2, yOffset: 0.05, rotY: 0, fuseY: 2.1 }
                 };
 
                 this.init();
@@ -1517,7 +1582,7 @@
                     this.scene = new THREE.Scene();
 
                     this.camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
-                    this.camera.position.set(0, 1.8, 5.2);
+                    this.camera.position.set(0, 1.85, 5.4);
                     this.camera.lookAt(0, 0.95, 0);
 
                     this.renderer = new THREE.WebGLRenderer({
@@ -1532,14 +1597,14 @@
                     this.renderer.toneMappingExposure = 1.25;
 
                     // Studio Illumination: Warm Festive 24K Gold & Obsidian Palette
-                    const ambient = new THREE.AmbientLight(0xffecd2, 1.25);
+                    const ambient = new THREE.AmbientLight(0xffecd2, 1.3);
                     this.scene.add(ambient);
 
                     const keyLight = new THREE.DirectionalLight(0xfff7e6, 1.8);
                     keyLight.position.set(3, 8, 4.5);
                     this.scene.add(keyLight);
 
-                    const rimLight = new THREE.DirectionalLight(0xffd700, 1.1);
+                    const rimLight = new THREE.DirectionalLight(0xffd700, 1.2);
                     rimLight.position.set(-3.5, 4, -3);
                     this.scene.add(rimLight);
 
@@ -1581,12 +1646,17 @@
                         this.loader = new THREE.GLTFLoader();
                     }
 
+                    // Load All Interactive Props
+                    this.loadMatchbox();
+                    this.loadLighter();
+                    this.loadBlastEffect();
+
                     this.bindPointerEvents();
                     window.addEventListener('resize', () => this.resize());
                     this.resize();
                     this.animate();
 
-                    // Preload all 3D models smoothly in background
+                    // Preload all 3D cracker models
                     this.preloadAll();
                 } catch (e) {
                     console.warn('Three.js studio error:', e);
@@ -1619,17 +1689,14 @@
                     this.loader.load(url, (gltf) => {
                         const root = gltf.scene;
 
-                        // Calculate Bounding Box
                         const box = new THREE.Box3().setFromObject(root);
                         const size = box.getSize(new THREE.Vector3());
                         const center = box.getCenter(new THREE.Vector3());
 
-                        // Shift geometry so base rests at Y = 0 and is centered on X and Z
                         root.position.x = -center.x;
                         root.position.z = -center.z;
                         root.position.y = -box.min.y + (cfg.yOffset || 0);
 
-                        // Scale to fit stage
                         let targetDim = cfg.targetW || cfg.targetH || 2.5;
                         let refDim = cfg.targetW ? Math.max(size.x, size.z) : Math.max(size.x, size.y, size.z);
                         const scale = refDim > 0 ? (targetDim / refDim) : 1.0;
@@ -1662,11 +1729,256 @@
                 doLoad(cfg.url);
             }
 
+            // 1. 3D MATCHBOX & MATCHSTICK
+            loadMatchbox() {
+                if (!this.loader) return;
+                this.matchboxGroup = new THREE.Group();
+                this.matchstickGroup = new THREE.Group();
+
+                this.loader.load('models/matchbox.glb', (gltf) => {
+                    const box = gltf.scene;
+                    const bBox = new THREE.Box3().setFromObject(box);
+                    const bSize = bBox.getSize(new THREE.Vector3());
+                    const bCenter = bBox.getCenter(new THREE.Vector3());
+                    box.position.x = -bCenter.x;
+                    box.position.z = -bCenter.z;
+                    box.position.y = -bBox.min.y;
+
+                    const scale = 0.85 / Math.max(bSize.x, bSize.z);
+                    box.scale.setScalar(scale);
+
+                    this.matchboxGroup.add(box);
+                    this.matchboxGroup.position.set(1.85, 0.02, 0.35);
+                    this.matchboxGroup.rotation.set(-0.1, -0.45, 0.05);
+                    this.scene.add(this.matchboxGroup);
+                });
+
+                this.loader.load('models/matchstick.glb', (gltf) => {
+                    const stick = gltf.scene;
+                    const sBox = new THREE.Box3().setFromObject(stick);
+                    const sSize = sBox.getSize(new THREE.Vector3());
+                    const sCenter = sBox.getCenter(new THREE.Vector3());
+                    stick.position.x = -sCenter.x;
+                    stick.position.z = -sCenter.z;
+                    stick.position.y = -sBox.min.y;
+
+                    const scale = 1.15 / Math.max(sSize.x, sSize.y, sSize.z);
+                    stick.scale.setScalar(scale);
+
+                    this.matchstickGroup.add(stick);
+                    this.matchstickGroup.position.set(1.75, 0.06, 0.45);
+                    this.matchstickGroup.rotation.set(-0.1, -0.45, 0.2);
+
+                    // Attach 3D Flame to match tip
+                    this.loader.load('models/flame.glb', (fGltf) => {
+                        this.matchFlame = fGltf.scene;
+                        this.matchFlame.scale.set(0.001, 0.001, 0.001);
+                        this.matchFlame.position.set(-0.55, 0.08, 0);
+                        this.matchstickGroup.add(this.matchFlame);
+                    });
+
+                    this.scene.add(this.matchstickGroup);
+                });
+            }
+
+            // 2. 3D ZIPPO LIGHTER
+            loadLighter() {
+                if (!this.loader) return;
+                this.lighterGroup = new THREE.Group();
+
+                this.loader.load('models/lighter.glb', (gltf) => {
+                    const lighter = gltf.scene;
+                    const lBox = new THREE.Box3().setFromObject(lighter);
+                    const lSize = lBox.getSize(new THREE.Vector3());
+                    const lCenter = lBox.getCenter(new THREE.Vector3());
+                    lighter.position.x = -lCenter.x;
+                    lighter.position.z = -lCenter.z;
+                    lighter.position.y = -lBox.min.y;
+
+                    const scale = 0.95 / Math.max(lSize.x, lSize.y, lSize.z);
+                    lighter.scale.setScalar(scale);
+
+                    this.lighterGroup.add(lighter);
+                    this.lighterGroup.position.set(-1.85, 0.02, 0.35);
+                    this.lighterGroup.rotation.set(-0.1, 0.45, 0);
+
+                    // Attach flame at lighter nozzle
+                    this.loader.load('models/flame.glb', (fGltf) => {
+                        this.lighterFlame = fGltf.scene;
+                        this.lighterFlame.scale.set(0.001, 0.001, 0.001);
+                        this.lighterFlame.position.set(0, 0.92, 0);
+                        this.lighterGroup.add(this.lighterFlame);
+                    });
+
+                    this.scene.add(this.lighterGroup);
+                });
+            }
+
+            // 3. 3D EXPLOSION FIREBALL
+            loadBlastEffect() {
+                if (!this.loader) return;
+                this.blastGroup = new THREE.Group();
+                this.loader.load('models/flame.glb', (gltf) => {
+                    const blast = gltf.scene;
+                    const bBox = new THREE.Box3().setFromObject(blast);
+                    const bCenter = bBox.getCenter(new THREE.Vector3());
+                    blast.position.x = -bCenter.x;
+                    blast.position.y = -bCenter.y;
+                    blast.position.z = -bCenter.z;
+
+                    this.blastGroup.add(blast);
+                    this.blastGroup.position.set(0, 0.45, 0);
+                    this.blastGroup.scale.set(0.001, 0.001, 0.001);
+                    this.blastGroup.visible = false;
+                    this.scene.add(this.blastGroup);
+                });
+            }
+
+            selectTool(toolName) {
+                this.activeTool = toolName;
+                const btnM = document.getElementById('toolBtnMatch');
+                const btnL = document.getElementById('toolBtnLighter');
+                if (toolName === 'match') {
+                    if (btnM) btnM.classList.add('active');
+                    if (btnL) btnL.classList.remove('active');
+                } else {
+                    if (btnM) btnM.classList.remove('active');
+                    if (btnL) btnL.classList.add('active');
+                }
+                haptic(15);
+            }
+
+            strikeActiveTool(onIgnite) {
+                if (this.isStriking) return;
+                this.isStriking = true;
+
+                if (this.activeTool === 'match' && this.matchstickGroup) {
+                    sfx.playMatchStrike();
+                    const startPos = this.matchstickGroup.position.clone();
+                    const startRot = this.matchstickGroup.rotation.clone();
+
+                    let step = 0;
+                    const strikeTimer = setInterval(() => {
+                        step++;
+                        this.matchstickGroup.position.x += 0.04;
+                        if (step >= 5) {
+                            clearInterval(strikeTimer);
+                            sfx.playFlameCatch();
+                            if (this.matchFlame) {
+                                this.matchFlame.scale.set(0.24, 0.28, 0.24);
+                            }
+                            if (this.fuseLight) {
+                                this.fuseLight.intensity = 2.0;
+                                this.fuseLight.position.set(this.matchstickGroup.position.x, this.matchstickGroup.position.y + 0.3, this.matchstickGroup.position.z);
+                            }
+
+                            const fuseY = (this.modelConfigs[currentCracker]?.fuseY) || 1.4;
+                            const targetPos = new THREE.Vector3(0.12, fuseY, 0.2);
+
+                            let glideStep = 0;
+                            const glideTimer = setInterval(() => {
+                                glideStep++;
+                                this.matchstickGroup.position.lerp(targetPos, 0.25);
+                                this.matchstickGroup.rotation.x = -0.3;
+                                this.matchstickGroup.rotation.z = 0.5;
+
+                                if (glideStep >= 12) {
+                                    clearInterval(glideTimer);
+                                    if (onIgnite) onIgnite();
+
+                                    setTimeout(() => {
+                                        let returnStep = 0;
+                                        const returnTimer = setInterval(() => {
+                                            returnStep++;
+                                            this.matchstickGroup.position.lerp(startPos, 0.22);
+                                            this.matchstickGroup.rotation.copy(startRot);
+                                            if (this.matchFlame) {
+                                                this.matchFlame.scale.multiplyScalar(0.85);
+                                            }
+                                            if (returnStep >= 12) {
+                                                clearInterval(returnTimer);
+                                                this.matchstickGroup.position.copy(startPos);
+                                                this.matchstickGroup.rotation.copy(startRot);
+                                                if (this.matchFlame) {
+                                                    this.matchFlame.scale.set(0.001, 0.001, 0.001);
+                                                }
+                                                this.isStriking = false;
+                                            }
+                                        }, 30);
+                                    }, 400);
+                                }
+                            }, 30);
+                        }
+                    }, 30);
+                } else if (this.lighterGroup) {
+                    sfx.playMatchStrike();
+                    const startPos = this.lighterGroup.position.clone();
+                    const startRot = this.lighterGroup.rotation.clone();
+
+                    setTimeout(() => {
+                        sfx.playFlameCatch();
+                        if (this.lighterFlame) {
+                            this.lighterFlame.scale.set(0.24, 0.28, 0.24);
+                        }
+                        if (this.fuseLight) {
+                            this.fuseLight.intensity = 2.2;
+                            this.fuseLight.position.set(this.lighterGroup.position.x, this.lighterGroup.position.y + 0.4, this.lighterGroup.position.z);
+                        }
+
+                        const fuseY = (this.modelConfigs[currentCracker]?.fuseY) || 1.4;
+                        const targetPos = new THREE.Vector3(-0.15, fuseY, 0.2);
+
+                        let glideStep = 0;
+                        const glideTimer = setInterval(() => {
+                            glideStep++;
+                            this.lighterGroup.position.lerp(targetPos, 0.25);
+                            this.lighterGroup.rotation.z = -0.35;
+
+                            if (glideStep >= 12) {
+                                clearInterval(glideTimer);
+                                if (onIgnite) onIgnite();
+
+                                setTimeout(() => {
+                                    let returnStep = 0;
+                                    const returnTimer = setInterval(() => {
+                                        returnStep++;
+                                        this.lighterGroup.position.lerp(startPos, 0.22);
+                                        this.lighterGroup.rotation.copy(startRot);
+                                        if (this.lighterFlame) {
+                                            this.lighterFlame.scale.multiplyScalar(0.85);
+                                        }
+                                        if (returnStep >= 12) {
+                                            clearInterval(returnTimer);
+                                            this.lighterGroup.position.copy(startPos);
+                                            this.lighterGroup.rotation.copy(startRot);
+                                            if (this.lighterFlame) {
+                                                this.lighterFlame.scale.set(0.001, 0.001, 0.001);
+                                            }
+                                            this.isStriking = false;
+                                        }
+                                    }, 30);
+                                }, 400);
+                            }
+                        }, 30);
+                    }, 120);
+                } else {
+                    if (onIgnite) onIgnite();
+                    this.isStriking = false;
+                }
+            }
+
+            triggerBlast() {
+                if (!this.blastGroup) return;
+                this.isBlasting = true;
+                this.blastProgress = 0;
+                this.blastGroup.visible = true;
+                this.blastGroup.scale.set(0.2, 0.2, 0.2);
+            }
+
             switchModel(key) {
                 this.currentKey = key;
                 this.reset();
 
-                // Hide all models
                 for (const k in this.models) {
                     if (this.models[k] && this.models[k].pivot) {
                         this.models[k].pivot.visible = false;
@@ -1698,6 +2010,7 @@
                 if (this.currentModel && this.currentModel.pivot) {
                     this.currentModel.pivot.visible = false;
                 }
+                this.triggerBlast();
             }
 
             launchRocket() {
@@ -1709,8 +2022,19 @@
                 this.shakeIntensity = 0;
                 this.isRocketLaunching = false;
                 this.rocketSpeed = 0;
+                this.isBlasting = false;
+                this.isStriking = false;
                 if (this.fuseLight) {
                     this.fuseLight.intensity = 0;
+                }
+                if (this.blastGroup) {
+                    this.blastGroup.visible = false;
+                }
+                if (this.matchFlame) {
+                    this.matchFlame.scale.set(0.001, 0.001, 0.001);
+                }
+                if (this.lighterFlame) {
+                    this.lighterFlame.scale.set(0.001, 0.001, 0.001);
                 }
                 if (this.currentModel && this.currentModel.pivot) {
                     this.currentModel.pivot.visible = true;
@@ -1761,12 +2085,10 @@
                 requestAnimationFrame(() => this.animate());
 
                 if (this.currentModel && this.currentModel.pivot && this.currentModel.pivot.visible) {
-                    // Smooth idle turntable spin
-                    if (this.autoRotate && !isBurning) {
+                    if (this.autoRotate && !isBurning && !this.isStriking) {
                         this.currentModel.pivot.rotation.y += 0.005;
                     }
 
-                    // Sizzling bomb shake
                     if (this.shakeIntensity > 0) {
                         this.currentModel.pivot.position.x = (Math.random() - 0.5) * this.shakeIntensity;
                         this.currentModel.pivot.position.z = (Math.random() - 0.5) * this.shakeIntensity;
@@ -1775,24 +2097,39 @@
                         this.currentModel.pivot.position.z = 0;
                     }
 
-                    // 3D Rocket flight
                     if (this.isRocketLaunching) {
                         this.rocketSpeed += 0.06;
                         this.currentModel.pivot.position.y += this.rocketSpeed;
                         if (this.currentModel.pivot.position.y > 10) {
                             this.currentModel.pivot.visible = false;
                             this.isRocketLaunching = false;
+                            this.triggerBlast();
                         }
                     }
                 }
 
-                // Fuse burning light flicker
-                if (this.fuseLight) {
-                    if (isBurning && !bombExploded) {
-                        this.fuseLight.intensity = 1.8 + Math.random() * 1.5;
-                    } else {
-                        this.fuseLight.intensity = 0;
+                // Animate 3D Explosion Fireball
+                if (this.isBlasting && this.blastGroup) {
+                    this.blastProgress += 0.045;
+                    const scale = Math.sin(Math.min(1.0, this.blastProgress) * Math.PI) * 3.6;
+                    this.blastGroup.scale.set(scale, scale * 1.15, scale);
+                    this.blastGroup.rotation.y += 0.09;
+
+                    if (this.fuseLight) {
+                        this.fuseLight.intensity = Math.max(0, (1 - this.blastProgress) * 6.0);
                     }
+
+                    if (this.blastProgress >= 1.0) {
+                        this.isBlasting = false;
+                        this.blastGroup.visible = false;
+                    }
+                }
+
+                // Dynamic Fuse Light Flicker
+                if (this.fuseLight && isBurning && !bombExploded && !this.isBlasting) {
+                    this.fuseLight.intensity = 1.8 + Math.random() * 1.5;
+                } else if (!this.isBlasting && !this.isStriking) {
+                    if (this.fuseLight) this.fuseLight.intensity = 0;
                 }
 
                 if (this.renderer && this.scene && this.camera) {
@@ -3110,7 +3447,12 @@
         const btnIgnite = document.getElementById('btnIgnite');
         btnIgnite.addEventListener('click', (e) => {
             e.preventDefault();
-            igniteCracker();
+            if (isBurning) return;
+            if (typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker)) {
+                studio3D.strikeActiveTool(() => igniteCracker());
+            } else {
+                igniteCracker();
+            }
         });
 
         const btnReset = document.getElementById('btnReset');
