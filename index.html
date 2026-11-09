@@ -1526,6 +1526,10 @@
         // Loaded directly from Diwali+crackers.blend & Diwali assets
         // (Includes 3D Matchbox, Matchstick, Zippo Lighter & 3D Flame)
         // ========================================================
+        // AUTHENTIC 3D CRACKER STUDIO ENGINE (Three.js WebGL)
+        // Loaded directly from Diwali+crackers.blend & Diwali assets
+        // (Includes 3D Matchbox, Matchstick, Zippo Lighter & 3D Flame)
+        // ========================================================
         class Studio3D {
             constructor() {
                 this.canvas = document.getElementById('webglCanvas');
@@ -1534,6 +1538,7 @@
                 this.camera = null;
                 this.renderer = null;
                 this.loader = null;
+                this.loadingKeys = {};
                 this.models = {};
                 this.currentKey = null;
                 this.currentModel = null;
@@ -1561,17 +1566,52 @@
                 this.modelConfigs = {
                     anar: { url: 'models/anar.glb', targetH: 2.7, yOffset: 0.05, rotY: 0, fuseY: 2.7 },
                     bomb: { url: 'models/diwali_cracker_atom_bomb.glb', fallbackUrl: 'models/bomb.glb', targetH: 2.1, yOffset: 0.05, rotY: 0.35, fuseY: 1.8 },
-                    rocket: { url: 'models/rocket.glb', targetH: 3.5, yOffset: 0.08, rotY: 0, fuseY: 1.2 },
+                    rocket: { url: 'models/rocket.glb', targetH: 3.2, yOffset: 0.08, rotZ: Math.PI / 2, rotY: 0, fuseY: 1.2 },
                     ladi: { url: 'models/ladi.glb', targetW: 4.5, yOffset: 0.05, rotY: 0, fuseY: 0.5 },
-                    skyshot: { url: 'models/bullet.glb', targetH: 2.2, yOffset: 0.05, rotY: 0, fuseY: 2.1 }
+                    skyshot: { url: 'models/bullet.glb', targetH: 1.8, yOffset: 0.05, rotZ: Math.PI / 2, rotY: 0, fuseY: 1.6 }
                 };
 
                 this.init();
             }
 
+            getLoader(callback) {
+                if (this.loader) {
+                    if (callback) callback(this.loader);
+                    return this.loader;
+                }
+                if (typeof THREE !== 'undefined' && typeof THREE.GLTFLoader !== 'undefined') {
+                    this.loader = new THREE.GLTFLoader();
+                    if (callback) callback(this.loader);
+                    return this.loader;
+                }
+                if (typeof THREE !== 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'js/GLTFLoader.js';
+                    script.onload = () => {
+                        if (typeof THREE.GLTFLoader !== 'undefined') {
+                            this.loader = new THREE.GLTFLoader();
+                            if (callback) callback(this.loader);
+                        }
+                    };
+                    script.onerror = () => {
+                        const fallbackScript = document.createElement('script');
+                        fallbackScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+                        fallbackScript.onload = () => {
+                            if (typeof THREE.GLTFLoader !== 'undefined') {
+                                this.loader = new THREE.GLTFLoader();
+                                if (callback) callback(this.loader);
+                            }
+                        };
+                        document.head.appendChild(fallbackScript);
+                    };
+                    document.head.appendChild(script);
+                }
+                return null;
+            }
+
             init() {
                 if (typeof THREE === 'undefined') {
-                    setTimeout(() => this.init(), 80);
+                    setTimeout(() => this.init(), 60);
                     return;
                 }
                 try {
@@ -1642,22 +1682,19 @@
                     innerRing.position.y = 0.015;
                     this.scene.add(innerRing);
 
-                    if (typeof THREE.GLTFLoader !== 'undefined') {
-                        this.loader = new THREE.GLTFLoader();
-                    }
-
-                    // Load All Interactive Props
-                    this.loadMatchbox();
-                    this.loadLighter();
-                    this.loadBlastEffect();
-
                     this.bindPointerEvents();
                     window.addEventListener('resize', () => this.resize());
                     this.resize();
                     this.animate();
 
-                    // Preload all 3D cracker models
-                    this.preloadAll();
+                    // Load props lazily
+                    this.loadActiveToolProps();
+                    this.loadBlastEffect();
+
+                    // Load current active section's model only!
+                    if (this.currentKey) {
+                        this.loadModel(this.currentKey);
+                    }
                 } catch (e) {
                     console.warn('Three.js studio error:', e);
                 }
@@ -1675,162 +1712,213 @@
                 }
             }
 
-            preloadAll() {
-                for (const key of Object.keys(this.modelConfigs)) {
-                    this.loadModel(key);
+            updateHudStatusReady() {
+                const hudStatusText = document.getElementById('hudStatusText');
+                if (hudStatusText && !isBurning) {
+                    if (currentLang === 'mr') hudStatusText.textContent = 'तयार आहे • पेटवा';
+                    else if (currentLang === 'hi') hudStatusText.textContent = 'तैयार है • जलाएं';
+                    else hudStatusText.textContent = 'READY • TAP IGNITE';
                 }
             }
 
+            // SECTION-BASED LAZY LOADING: Loads model ONLY when entering that cracker section!
             loadModel(key) {
-                if (!this.loader || this.models[key] || !this.modelConfigs[key]) return;
-                const cfg = this.modelConfigs[key];
+                if (this.models[key] || this.loadingKeys[key] || !this.modelConfigs[key]) return;
+                this.loadingKeys[key] = true;
 
-                const doLoad = (url) => {
-                    this.loader.load(url, (gltf) => {
-                        const root = gltf.scene;
+                this.getLoader((loader) => {
+                    const cfg = this.modelConfigs[key];
+                    const doLoad = (url) => {
+                        loader.load(url, (gltf) => {
+                            this.loadingKeys[key] = false;
+                            const root = gltf.scene;
 
-                        const box = new THREE.Box3().setFromObject(root);
-                        const size = box.getSize(new THREE.Vector3());
-                        const center = box.getCenter(new THREE.Vector3());
+                            if (cfg.rotZ) {
+                                root.rotation.z = cfg.rotZ;
+                            }
+                            if (cfg.rotX) {
+                                root.rotation.x = cfg.rotX;
+                            }
+                            root.updateMatrixWorld(true);
 
-                        root.position.x = -center.x;
-                        root.position.z = -center.z;
-                        root.position.y = -box.min.y + (cfg.yOffset || 0);
+                            const box = new THREE.Box3().setFromObject(root);
+                            const size = box.getSize(new THREE.Vector3());
+                            const center = box.getCenter(new THREE.Vector3());
 
-                        let targetDim = cfg.targetW || cfg.targetH || 2.5;
-                        let refDim = cfg.targetW ? Math.max(size.x, size.z) : Math.max(size.x, size.y, size.z);
-                        const scale = refDim > 0 ? (targetDim / refDim) : 1.0;
+                            root.position.x = -center.x;
+                            root.position.z = -center.z;
+                            root.position.y = -box.min.y + (cfg.yOffset || 0);
 
-                        const pivot = new THREE.Group();
-                        pivot.add(root);
-                        pivot.scale.setScalar(scale);
-                        pivot.rotation.y = cfg.rotY || 0;
-                        pivot.visible = (this.currentKey === key);
+                            let targetDim = cfg.targetW || cfg.targetH || 2.5;
+                            let refDim = cfg.targetW ? Math.max(size.x, size.z) : Math.max(size.x, size.y, size.z);
+                            const scale = refDim > 0 ? (targetDim / refDim) : 1.0;
 
-                        this.scene.add(pivot);
-                        this.models[key] = {
-                            pivot: pivot,
-                            root: root,
-                            cfg: cfg,
-                            baseRotY: cfg.rotY || 0,
-                            baseScale: scale
-                        };
+                            const pivot = new THREE.Group();
+                            pivot.add(root);
+                            pivot.scale.setScalar(scale);
+                            pivot.rotation.y = cfg.rotY || 0;
+                            pivot.visible = (this.currentKey === key);
 
-                        if (this.currentKey === key) {
-                            this.currentModel = this.models[key];
-                        }
-                    }, undefined, (err) => {
-                        if (cfg.fallbackUrl && url !== cfg.fallbackUrl) {
-                            doLoad(cfg.fallbackUrl);
-                        }
-                    });
-                };
+                            this.scene.add(pivot);
+                            this.models[key] = {
+                                pivot: pivot,
+                                root: root,
+                                cfg: cfg,
+                                baseRotY: cfg.rotY || 0,
+                                baseScale: scale
+                            };
 
-                doLoad(cfg.url);
+                            if (this.currentKey === key) {
+                                this.currentModel = this.models[key];
+                                this.currentModel.pivot.visible = true;
+                                this.updateHudStatusReady();
+                            }
+                        }, undefined, (err) => {
+                            console.warn('GLTF load failed for:', url, err);
+                            if (cfg.fallbackUrl && url !== cfg.fallbackUrl) {
+                                doLoad(cfg.fallbackUrl);
+                            } else {
+                                this.loadingKeys[key] = false;
+                                this.updateHudStatusReady();
+                            }
+                        });
+                    };
+
+                    doLoad(cfg.url);
+                });
+            }
+
+            loadActiveToolProps() {
+                if (this.activeTool === 'match') {
+                    if (!this.matchboxGroup) {
+                        this.loadMatchbox();
+                    } else {
+                        this.matchboxGroup.visible = true;
+                        if (this.matchstickGroup) this.matchstickGroup.visible = true;
+                    }
+                    if (this.lighterGroup) this.lighterGroup.visible = false;
+                } else if (this.activeTool === 'lighter') {
+                    if (!this.lighterGroup) {
+                        this.loadLighter();
+                    } else {
+                        this.lighterGroup.visible = true;
+                    }
+                    if (this.matchboxGroup) this.matchboxGroup.visible = false;
+                    if (this.matchstickGroup) this.matchstickGroup.visible = false;
+                }
             }
 
             // 1. 3D MATCHBOX & MATCHSTICK
             loadMatchbox() {
-                if (!this.loader) return;
+                if (this.matchboxGroup) return;
                 this.matchboxGroup = new THREE.Group();
                 this.matchstickGroup = new THREE.Group();
 
-                this.loader.load('models/matchbox.glb', (gltf) => {
-                    const box = gltf.scene;
-                    const bBox = new THREE.Box3().setFromObject(box);
-                    const bSize = bBox.getSize(new THREE.Vector3());
-                    const bCenter = bBox.getCenter(new THREE.Vector3());
-                    box.position.x = -bCenter.x;
-                    box.position.z = -bCenter.z;
-                    box.position.y = -bBox.min.y;
+                this.getLoader((loader) => {
+                    loader.load('models/matchbox.glb', (gltf) => {
+                        const box = gltf.scene;
+                        const bBox = new THREE.Box3().setFromObject(box);
+                        const bSize = bBox.getSize(new THREE.Vector3());
+                        const bCenter = bBox.getCenter(new THREE.Vector3());
+                        box.position.x = -bCenter.x;
+                        box.position.z = -bCenter.z;
+                        box.position.y = -bBox.min.y;
 
-                    const scale = 0.85 / Math.max(bSize.x, bSize.z);
-                    box.scale.setScalar(scale);
+                        const scale = 0.85 / Math.max(bSize.x, bSize.z);
+                        box.scale.setScalar(scale);
 
-                    this.matchboxGroup.add(box);
-                    this.matchboxGroup.position.set(1.85, 0.02, 0.35);
-                    this.matchboxGroup.rotation.set(-0.1, -0.45, 0.05);
-                    this.scene.add(this.matchboxGroup);
-                });
-
-                this.loader.load('models/matchstick.glb', (gltf) => {
-                    const stick = gltf.scene;
-                    const sBox = new THREE.Box3().setFromObject(stick);
-                    const sSize = sBox.getSize(new THREE.Vector3());
-                    const sCenter = sBox.getCenter(new THREE.Vector3());
-                    stick.position.x = -sCenter.x;
-                    stick.position.z = -sCenter.z;
-                    stick.position.y = -sBox.min.y;
-
-                    const scale = 1.15 / Math.max(sSize.x, sSize.y, sSize.z);
-                    stick.scale.setScalar(scale);
-
-                    this.matchstickGroup.add(stick);
-                    this.matchstickGroup.position.set(1.75, 0.06, 0.45);
-                    this.matchstickGroup.rotation.set(-0.1, -0.45, 0.2);
-
-                    // Attach 3D Flame to match tip
-                    this.loader.load('models/flame.glb', (fGltf) => {
-                        this.matchFlame = fGltf.scene;
-                        this.matchFlame.scale.set(0.001, 0.001, 0.001);
-                        this.matchFlame.position.set(-0.55, 0.08, 0);
-                        this.matchstickGroup.add(this.matchFlame);
+                        this.matchboxGroup.add(box);
+                        this.matchboxGroup.position.set(1.85, 0.02, 0.35);
+                        this.matchboxGroup.rotation.set(-0.1, -0.45, 0.05);
+                        this.matchboxGroup.visible = (this.activeTool === 'match');
+                        this.scene.add(this.matchboxGroup);
                     });
 
-                    this.scene.add(this.matchstickGroup);
+                    loader.load('models/matchstick.glb', (gltf) => {
+                        const stick = gltf.scene;
+                        const sBox = new THREE.Box3().setFromObject(stick);
+                        const sSize = sBox.getSize(new THREE.Vector3());
+                        const sCenter = sBox.getCenter(new THREE.Vector3());
+                        stick.position.x = -sCenter.x;
+                        stick.position.z = -sCenter.z;
+                        stick.position.y = -sBox.min.y;
+
+                        const scale = 1.15 / Math.max(sSize.x, sSize.y, sSize.z);
+                        stick.scale.setScalar(scale);
+
+                        this.matchstickGroup.add(stick);
+                        this.matchstickGroup.position.set(1.75, 0.06, 0.45);
+                        this.matchstickGroup.rotation.set(-0.1, -0.45, 0.2);
+                        this.matchstickGroup.visible = (this.activeTool === 'match');
+
+                        // Attach 3D Flame to match tip
+                        loader.load('models/flame.glb', (fGltf) => {
+                            this.matchFlame = fGltf.scene;
+                            this.matchFlame.scale.set(0.001, 0.001, 0.001);
+                            this.matchFlame.position.set(-0.55, 0.08, 0);
+                            this.matchstickGroup.add(this.matchFlame);
+                        });
+
+                        this.scene.add(this.matchstickGroup);
+                    });
                 });
             }
 
             // 2. 3D ZIPPO LIGHTER
             loadLighter() {
-                if (!this.loader) return;
+                if (this.lighterGroup) return;
                 this.lighterGroup = new THREE.Group();
 
-                this.loader.load('models/lighter.glb', (gltf) => {
-                    const lighter = gltf.scene;
-                    const lBox = new THREE.Box3().setFromObject(lighter);
-                    const lSize = lBox.getSize(new THREE.Vector3());
-                    const lCenter = lBox.getCenter(new THREE.Vector3());
-                    lighter.position.x = -lCenter.x;
-                    lighter.position.z = -lCenter.z;
-                    lighter.position.y = -lBox.min.y;
+                this.getLoader((loader) => {
+                    loader.load('models/lighter.glb', (gltf) => {
+                        const lighter = gltf.scene;
+                        const lBox = new THREE.Box3().setFromObject(lighter);
+                        const lSize = lBox.getSize(new THREE.Vector3());
+                        const lCenter = lBox.getCenter(new THREE.Vector3());
+                        lighter.position.x = -lCenter.x;
+                        lighter.position.z = -lCenter.z;
+                        lighter.position.y = -lBox.min.y;
 
-                    const scale = 0.95 / Math.max(lSize.x, lSize.y, lSize.z);
-                    lighter.scale.setScalar(scale);
+                        const scale = 0.95 / Math.max(lSize.x, lSize.y, lSize.z);
+                        lighter.scale.setScalar(scale);
 
-                    this.lighterGroup.add(lighter);
-                    this.lighterGroup.position.set(-1.85, 0.02, 0.35);
-                    this.lighterGroup.rotation.set(-0.1, 0.45, 0);
+                        this.lighterGroup.add(lighter);
+                        this.lighterGroup.position.set(-1.85, 0.02, 0.35);
+                        this.lighterGroup.rotation.set(-0.1, 0.45, 0);
+                        this.lighterGroup.visible = (this.activeTool === 'lighter');
 
-                    // Attach flame at lighter nozzle
-                    this.loader.load('models/flame.glb', (fGltf) => {
-                        this.lighterFlame = fGltf.scene;
-                        this.lighterFlame.scale.set(0.001, 0.001, 0.001);
-                        this.lighterFlame.position.set(0, 0.92, 0);
-                        this.lighterGroup.add(this.lighterFlame);
+                        // Attach flame at lighter nozzle
+                        loader.load('models/flame.glb', (fGltf) => {
+                            this.lighterFlame = fGltf.scene;
+                            this.lighterFlame.scale.set(0.001, 0.001, 0.001);
+                            this.lighterFlame.position.set(0, 0.92, 0);
+                            this.lighterGroup.add(this.lighterFlame);
+                        });
+
+                        this.scene.add(this.lighterGroup);
                     });
-
-                    this.scene.add(this.lighterGroup);
                 });
             }
 
             // 3. 3D EXPLOSION FIREBALL
             loadBlastEffect() {
-                if (!this.loader) return;
+                if (this.blastGroup) return;
                 this.blastGroup = new THREE.Group();
-                this.loader.load('models/flame.glb', (gltf) => {
-                    const blast = gltf.scene;
-                    const bBox = new THREE.Box3().setFromObject(blast);
-                    const bCenter = bBox.getCenter(new THREE.Vector3());
-                    blast.position.x = -bCenter.x;
-                    blast.position.y = -bCenter.y;
-                    blast.position.z = -bCenter.z;
+                this.getLoader((loader) => {
+                    loader.load('models/flame.glb', (gltf) => {
+                        const blast = gltf.scene;
+                        const bBox = new THREE.Box3().setFromObject(blast);
+                        const bCenter = bBox.getCenter(new THREE.Vector3());
+                        blast.position.x = -bCenter.x;
+                        blast.position.y = -bCenter.y;
+                        blast.position.z = -bCenter.z;
 
-                    this.blastGroup.add(blast);
-                    this.blastGroup.position.set(0, 0.45, 0);
-                    this.blastGroup.scale.set(0.001, 0.001, 0.001);
-                    this.blastGroup.visible = false;
-                    this.scene.add(this.blastGroup);
+                        this.blastGroup.add(blast);
+                        this.blastGroup.position.set(0, 0.45, 0);
+                        this.blastGroup.scale.set(0.001, 0.001, 0.001);
+                        this.blastGroup.visible = false;
+                        this.scene.add(this.blastGroup);
+                    });
                 });
             }
 
@@ -1846,6 +1934,7 @@
                     if (btnL) btnL.classList.add('active');
                 }
                 haptic(15);
+                this.loadActiveToolProps();
             }
 
             strikeActiveTool(onIgnite) {
@@ -1975,6 +2064,7 @@
                 this.blastGroup.scale.set(0.2, 0.2, 0.2);
             }
 
+            // SWITCH TO CRACKER SECTION: Lazy-loads model only when entering this section!
             switchModel(key) {
                 this.currentKey = key;
                 this.reset();
@@ -1990,10 +2080,17 @@
                     this.currentModel.pivot.visible = true;
                     this.currentModel.pivot.position.set(0, 0, 0);
                     this.currentModel.pivot.rotation.y = this.models[key].baseRotY || 0;
+                    this.updateHudStatusReady();
                 } else if (this.modelConfigs[key]) {
+                    this.currentModel = null;
+                    const hudStatusText = document.getElementById('hudStatusText');
+                    if (hudStatusText && !isBurning) {
+                        hudStatusText.textContent = (currentLang === 'mr') ? '3D मॉडेल लोड होत आहे...' : ((currentLang === 'hi') ? '3D मॉडल लोड हो रहा है...' : 'LOADING 3D MODEL...');
+                    }
                     this.loadModel(key);
                 } else {
                     this.currentModel = null;
+                    this.updateHudStatusReady();
                 }
             }
 
@@ -2426,29 +2523,32 @@
         // 3D HIGH-DEFINITION CRACKER RENDERING ENGINE
         // ========================================================
         function drawCrackerStudio(groundY) {
+            const is3DActive = typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker);
             const cx = canvas.width / 2;
 
-            ctx.save();
-            ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(15, groundY);
-            ctx.lineTo(canvas.width - 15, groundY);
-            ctx.stroke();
+            if (!is3DActive) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(15, groundY);
+                ctx.lineTo(canvas.width - 15, groundY);
+                ctx.stroke();
 
-            // Ground Rangoli
-            ctx.strokeStyle = 'rgba(212, 175, 55, 0.22)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.ellipse(cx, groundY + 14, 130, 32, 0, 0, Math.PI * 2);
-            ctx.stroke();
+                // Ground Rangoli
+                ctx.strokeStyle = 'rgba(212, 175, 55, 0.22)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(cx, groundY + 14, 130, 32, 0, 0, Math.PI * 2);
+                ctx.stroke();
 
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.ellipse(cx, groundY + 14, 85, 20, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.ellipse(cx, groundY + 14, 85, 20, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
 
             if (shockwaveAlpha > 0) {
                 ctx.save();
@@ -2460,7 +2560,7 @@
                 ctx.restore();
             }
 
-            if (bombExploded) {
+            if (bombExploded && !is3DActive) {
                 ctx.save();
                 ctx.fillStyle = 'rgba(5, 5, 5, 0.95)';
                 ctx.beginPath();
@@ -2468,8 +2568,6 @@
                 ctx.fill();
                 ctx.restore();
             }
-
-            const is3DActive = typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker);
 
             // 1. PAUS (ANAR) - 110px TALL CONE, ZERO LOWER WICK BLEED
             if (currentCracker === 'anar' && !is3DActive) {
@@ -3332,8 +3430,14 @@
 
             const groundY = canvas.height - 35;
 
-            ctx.fillStyle = 'rgba(8, 6, 2, 0.28)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const is3DActive = typeof studio3D !== 'undefined' && studio3D && studio3D.isModelActive(currentCracker);
+
+            if (is3DActive) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = 'rgba(8, 6, 2, 0.28)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
 
             if (shockwaveAlpha > 0) {
                 shockwaveRadius += 4.5;
