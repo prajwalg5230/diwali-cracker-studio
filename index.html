@@ -1583,8 +1583,7 @@
                     anar: { url: 'models/anar.glb', targetH: 1.35, yOffset: 0.05, rotY: 0, fuseY: 1.40 },
                     bomb: { url: 'models/diwali_cracker_atom_bomb.glb', fallbackUrl: 'models/bomb.glb', targetH: 1.15, yOffset: 0.05, rotY: 0.35, fuseY: 1.15 },
                     rocket: { url: 'models/rocket.glb', targetH: 1.85, yOffset: 0.08, rotZ: Math.PI / 2, rotY: 0, fuseY: 0.75 },
-                    ladi: { url: 'models/ladi.glb', targetW: 2.30, yOffset: 0.05, rotY: 0, fuseY: 0.20 },
-                    skyshot: { url: 'models/bullet.glb', targetH: 1.10, yOffset: 0.05, rotZ: Math.PI / 2, rotY: 0, fuseY: 1.10 }
+                    ladi: { url: 'models/ladi.glb', targetW: 2.30, yOffset: 0.05, rotY: 0, fuseY: 0.20 }
                 };
 
                 this.init();
@@ -1708,9 +1707,9 @@
                     this.loadLighter();
                     this.loadBlastEffect();
 
-                    // Load current active section's model only!
-                    if (this.currentKey) {
-                        this.loadModel(this.currentKey);
+                    // Preload all 3D cracker models immediately so switching is zero-latency!
+                    for (const k in this.modelConfigs) {
+                        this.loadModel(k);
                     }
                 } catch (e) {
                     console.warn('Three.js studio error:', e);
@@ -1819,6 +1818,79 @@
                 }
             }
 
+            createRealisticFlame(baseScale = 1.0) {
+                const flamePivot = new THREE.Group();
+
+                // 1. Outer Crimson / Warm Orange teardrop
+                const outerGeo = new THREE.ConeGeometry(0.045 * baseScale, 0.18 * baseScale, 16);
+                outerGeo.translate(0, 0.09 * baseScale, 0);
+                const outerMat = new THREE.MeshBasicMaterial({
+                    color: 0xff4500,
+                    transparent: true,
+                    opacity: 0.75,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+                flamePivot.add(outerMesh);
+
+                // 2. Mid Golden Amber flame body
+                const midGeo = new THREE.ConeGeometry(0.032 * baseScale, 0.14 * baseScale, 14);
+                midGeo.translate(0, 0.07 * baseScale, 0);
+                const midMat = new THREE.MeshBasicMaterial({
+                    color: 0xffaa00,
+                    transparent: true,
+                    opacity: 0.85,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const midMesh = new THREE.Mesh(midGeo, midMat);
+                flamePivot.add(midMesh);
+
+                // 3. Inner White-Hot incandescent core
+                const coreGeo = new THREE.ConeGeometry(0.018 * baseScale, 0.09 * baseScale, 12);
+                coreGeo.translate(0, 0.045 * baseScale, 0);
+                const coreMat = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.95,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+                flamePivot.add(coreMesh);
+
+                // 4. Blue Combustion Base Ring / Sphere
+                const blueGeo = new THREE.SphereGeometry(0.022 * baseScale, 12, 10);
+                blueGeo.translate(0, 0.015 * baseScale, 0);
+                const blueMat = new THREE.MeshBasicMaterial({
+                    color: 0x38bdf8,
+                    transparent: true,
+                    opacity: 0.75,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const blueMesh = new THREE.Mesh(blueGeo, blueMat);
+                flamePivot.add(blueMesh);
+
+                // 5. PointLight attached directly to the flame
+                const flameLight = new THREE.PointLight(0xff9900, 0, 1.8);
+                flameLight.position.set(0, 0.08 * baseScale, 0);
+                flamePivot.add(flameLight);
+
+                flamePivot.userData = {
+                    outer: outerMesh,
+                    mid: midMesh,
+                    core: coreMesh,
+                    blue: blueMesh,
+                    light: flameLight,
+                    baseScale: baseScale
+                };
+
+                flamePivot.scale.set(0.0001, 0.0001, 0.0001);
+                return flamePivot;
+            }
+
             // 1. 3D MATCHBOX & MATCHSTICK
             loadMatchbox() {
                 if (this.matchboxGroup) return;
@@ -1869,13 +1941,10 @@
                         // Hidden inside closed box initially!
                         this.matchstickGroup.visible = false;
 
-                        // Attach 3D Flame directly to the red match head
-                        loader.load('models/flame.glb', (fGltf) => {
-                            this.matchFlame = fGltf.scene;
-                            this.matchFlame.scale.set(0.001, 0.001, 0.001);
-                            this.matchFlame.position.set(0.275, 0.04, 0);
-                            this.matchstickGroup.add(this.matchFlame);
-                        });
+                        // Attach realistic 3D burning flame directly onto the phosphorus match head
+                        this.matchFlame = this.createRealisticFlame(1.15);
+                        this.matchFlame.position.set(1.261, 0.076, 0.419);
+                        this.matchstickGroup.add(this.matchFlame);
 
                         this.scene.add(this.matchstickGroup);
                     });
@@ -1905,13 +1974,10 @@
                         this.lighterGroup.rotation.copy(this.lighterRestRot);
                         this.lighterGroup.visible = (this.activeTool === 'lighter');
 
-                        // Attach flame at lighter nozzle
-                        loader.load('models/flame.glb', (fGltf) => {
-                            this.lighterFlame = fGltf.scene;
-                            this.lighterFlame.scale.set(0.001, 0.001, 0.001);
-                            this.lighterFlame.position.set(0, 0.62, 0);
-                            this.lighterGroup.add(this.lighterFlame);
-                        });
+                        // Attach realistic roaring flame at lighter nozzle
+                        this.lighterFlame = this.createRealisticFlame(1.35);
+                        this.lighterFlame.position.set(0, 0.62, 0);
+                        this.lighterGroup.add(this.lighterFlame);
 
                         this.scene.add(this.lighterGroup);
                     });
@@ -2003,7 +2069,10 @@
                 sfx.playFlameCatch();
                 haptic(35);
                 if (this.matchFlame) {
-                    this.matchFlame.scale.set(0.09, 0.11, 0.09);
+                    this.matchFlame.scale.set(1, 1, 1);
+                    if (this.matchFlame.userData && this.matchFlame.userData.light) {
+                        this.matchFlame.userData.light.intensity = 2.0;
+                    }
                 }
                 if (this.fuseLight) {
                     this.fuseLight.intensity = 2.4;
@@ -2014,7 +2083,10 @@
             extinguishMatchstick() {
                 this.isStickBurning = false;
                 if (this.matchFlame) {
-                    this.matchFlame.scale.set(0.001, 0.001, 0.001);
+                    this.matchFlame.scale.set(0.0001, 0.0001, 0.0001);
+                    if (this.matchFlame.userData && this.matchFlame.userData.light) {
+                        this.matchFlame.userData.light.intensity = 0;
+                    }
                 }
                 if (!this.isLighterBurning && this.fuseLight && !isBurning) {
                     this.fuseLight.intensity = 0;
@@ -2029,7 +2101,10 @@
                 sfx.playFlameCatch();
                 haptic(30);
                 if (this.lighterFlame) {
-                    this.lighterFlame.scale.set(0.10, 0.13, 0.10);
+                    this.lighterFlame.scale.set(1, 1, 1);
+                    if (this.lighterFlame.userData && this.lighterFlame.userData.light) {
+                        this.lighterFlame.userData.light.intensity = 2.4;
+                    }
                 }
                 if (this.fuseLight) {
                     this.fuseLight.intensity = 2.6;
@@ -2040,48 +2115,57 @@
             extinguishLighter() {
                 this.isLighterBurning = false;
                 if (this.lighterFlame) {
-                    this.lighterFlame.scale.set(0.001, 0.001, 0.001);
+                    this.lighterFlame.scale.set(0.0001, 0.0001, 0.0001);
+                    if (this.lighterFlame.userData && this.lighterFlame.userData.light) {
+                        this.lighterFlame.userData.light.intensity = 0;
+                    }
                 }
                 if (!this.isStickBurning && this.fuseLight && !isBurning) {
                     this.fuseLight.intensity = 0;
                 }
             }
 
-            // 3. 3D EXPLOSION FIREBALL
+            // 3. 3D EXPLOSION FIREBALL & SHRAPNEL
             loadBlastEffect() {
                 if (this.blastGroup) return;
                 this.blastGroup = new THREE.Group();
 
-                const sphereGeo = new THREE.SphereGeometry(0.45, 24, 24);
-                const sphereMat = new THREE.MeshBasicMaterial({
-                    color: 0xff6600,
-                    transparent: true,
-                    opacity: 0.92
-                });
-                const coreSphere = new THREE.Mesh(sphereGeo, sphereMat);
-                this.blastGroup.add(coreSphere);
+                // 1. White-hot core sphere
+                this.blastCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.98 });
+                this.blastCore = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), this.blastCoreMat);
+                this.blastGroup.add(this.blastCore);
 
-                const innerGeo = new THREE.SphereGeometry(0.28, 20, 20);
-                const innerMat = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.95
-                });
-                const innerSphere = new THREE.Mesh(innerGeo, innerMat);
-                this.blastGroup.add(innerSphere);
+                // 2. Mid golden amber fireball
+                this.blastMidMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.88 });
+                this.blastMid = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), this.blastMidMat);
+                this.blastGroup.add(this.blastMid);
 
-                this.getLoader((loader) => {
-                    loader.load('models/flame.glb', (gltf) => {
-                        const blast = gltf.scene;
-                        const bBox = new THREE.Box3().setFromObject(blast);
-                        const bCenter = bBox.getCenter(new THREE.Vector3());
-                        blast.position.x = -bCenter.x;
-                        blast.position.y = -bCenter.y;
-                        blast.position.z = -bCenter.z;
+                // 3. Outer blazing red/orange fireball
+                this.blastOutMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.78 });
+                this.blastOut = new THREE.Mesh(new THREE.SphereGeometry(0.95, 16, 16), this.blastOutMat);
+                this.blastGroup.add(this.blastOut);
 
-                        this.blastGroup.add(blast);
+                // 4. Ground expanding shockwave ring
+                this.blastShockMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+                this.blastShock = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.45, 36), this.blastShockMat);
+                this.blastShock.rotation.x = -Math.PI / 2;
+                this.blastShock.position.y = 0.02;
+                this.blastGroup.add(this.blastShock);
+
+                // 5. 3D Shrapnel Fragments (Jute twine & wrapping paper debris)
+                this.blastFragments = [];
+                for (let i = 0; i < 24; i++) {
+                    const geo = new THREE.BoxGeometry(0.045, 0.045, 0.045);
+                    const col = (i % 3 === 0) ? 0x2e7d32 : ((i % 3 === 1) ? 0x854d0e : 0xffd700);
+                    const mat = new THREE.MeshBasicMaterial({ color: col });
+                    const frag = new THREE.Mesh(geo, mat);
+                    this.blastGroup.add(frag);
+                    this.blastFragments.push({
+                        mesh: frag,
+                        vx: 0, vy: 0, vz: 0,
+                        rotX: 0, rotY: 0
                     });
-                });
+                }
 
                 this.blastGroup.position.set(0, 0.55, 0);
                 this.blastGroup.scale.set(0.001, 0.001, 0.001);
@@ -2191,9 +2275,17 @@
                     const screenX = rect.left + tipScreen.x * (rect.width / canvas.width);
                     const screenY = rect.top + tipScreen.y * (rect.height / canvas.height);
                     distScreen = Math.hypot(clientX - screenX, clientY - screenY);
+                } else {
+                    const rect = this.container.getBoundingClientRect();
+                    const cx = rect.left + rect.width / 2;
+                    let cy = rect.top + rect.height * 0.7;
+                    if (currentCracker === 'skyshot') cy = rect.top + rect.height * 0.72;
+                    else if (currentCracker === 'chakri') cy = rect.top + rect.height * 0.85;
+                    else if (currentCracker === 'snake') cy = rect.top + rect.height * 0.88;
+                    distScreen = Math.hypot(clientX - cx, clientY - cy);
                 }
 
-                if (dist3D < 0.65 || distScreen < 75) {
+                if (dist3D < 0.65 || distScreen < 80) {
                     haptic(50);
                     igniteCracker();
                 }
@@ -2215,7 +2307,7 @@
                         const startPos = this.matchstickGroup.position.clone();
                         const startRot = this.matchstickGroup.rotation.clone();
 
-                        const targetPos = new THREE.Vector3(fusePos.x + 0.15, fusePos.y, fusePos.z + 0.15);
+                        const targetPos = new THREE.Vector3(fusePos.x - 1.043, fusePos.y - 0.814, fusePos.z + 0.141);
 
                         let glideStep = 0;
                         const glideTimer = setInterval(() => {
@@ -2254,7 +2346,7 @@
                     const startPos = this.lighterGroup.position.clone();
                     const startRot = this.lighterGroup.rotation.clone();
 
-                    const targetPos = new THREE.Vector3(fusePos.x + 0.12, fusePos.y - 0.45, fusePos.z + 0.15);
+                    const targetPos = new THREE.Vector3(fusePos.x - 0.144, fusePos.y - 0.602, fusePos.z + 0.038);
 
                     let glideStep = 0;
                     const glideTimer = setInterval(() => {
@@ -2298,10 +2390,47 @@
                 this.blastProgress = 0;
                 this.blastGroup.visible = true;
                 this.blastGroup.scale.set(0.1, 0.1, 0.1);
+
+                // Reset and launch 3D shrapnel fragments
+                if (this.blastFragments) {
+                    for (let f of this.blastFragments) {
+                        f.mesh.position.set(0, 0, 0);
+                        f.mesh.visible = true;
+                        f.vx = (Math.random() - 0.5) * 0.18;
+                        f.vy = Math.random() * 0.16 + 0.05;
+                        f.vz = (Math.random() - 0.5) * 0.18;
+                        f.rotX = (Math.random() - 0.5) * 0.3;
+                        f.rotY = (Math.random() - 0.5) * 0.3;
+                    }
+                }
+            }
+
+            switchModel(key) {
+                this.currentKey = key;
+                for (const k in this.models) {
+                    if (this.models[k] && this.models[k].pivot) {
+                        this.models[k].pivot.visible = (k === key);
+                    }
+                }
+                if (this.modelConfigs[key]) {
+                    if (this.models[key]) {
+                        this.currentModel = this.models[key];
+                        this.currentModel.pivot.visible = true;
+                        this.currentModel.pivot.position.set(0, 0, 0);
+                        this.currentModel.pivot.rotation.y = this.currentModel.baseRotY || 0;
+                        this.updateHudStatusReady();
+                    } else {
+                        this.currentModel = null;
+                        this.loadModel(key);
+                    }
+                } else {
+                    this.currentModel = null;
+                }
+                this.reset();
             }
 
             isModelActive(key) {
-                return !!(this.models[key] && this.currentKey === key);
+                return !!(this.modelConfigs[key] && this.models[key] && this.currentKey === key && this.currentModel && this.currentModel.pivot && this.currentModel.pivot.visible);
             }
 
             shakeBomb(amount = 0.08) {
@@ -2314,7 +2443,7 @@
                     this.currentModel.pivot.visible = false;
                 }
                 if (this.fuseLight) {
-                    this.fuseLight.intensity = 15.0;
+                    this.fuseLight.intensity = 20.0;
                     this.fuseLight.color.setHex(0xffaa22);
                 }
                 this.triggerBlast();
@@ -2433,12 +2562,15 @@
                         }
                         const planePos = this.getPointerWorldPos(e.clientX, e.clientY, 0.45);
                         if (this.matchstickGroup) {
-                            this.matchstickGroup.position.lerp(new THREE.Vector3(planePos.x + 0.12, planePos.y, planePos.z + 0.15), 0.5);
+                            // Match head offset compensation so head with burning flame stays right under finger!
+                            this.matchstickGroup.position.lerp(new THREE.Vector3(planePos.x - 1.043, planePos.y - 0.814, planePos.z + 0.141), 0.5);
                             this.matchstickGroup.rotation.set(-0.25, 0.35, 0.65);
                         }
-                        if (this.fuseLight) {
-                            this.fuseLight.position.copy(this.matchstickGroup.position);
-                            this.fuseLight.intensity = 2.2 + Math.random() * 0.4;
+                        if (this.fuseLight && this.matchFlame) {
+                            const flameWorld = new THREE.Vector3();
+                            this.matchFlame.getWorldPosition(flameWorld);
+                            this.fuseLight.position.copy(flameWorld);
+                            this.fuseLight.intensity = 2.4 + Math.random() * 0.4;
                         }
                         this.checkFuseContact(e.clientX, e.clientY);
                         return;
@@ -2451,12 +2583,15 @@
                         }
                         const planePos = this.getPointerWorldPos(e.clientX, e.clientY, 0.45);
                         if (this.lighterGroup) {
-                            this.lighterGroup.position.lerp(new THREE.Vector3(planePos.x + 0.08, planePos.y - 0.28, planePos.z + 0.15), 0.5);
+                            // Lighter nozzle offset compensation so nozzle with roaring flame stays right under finger!
+                            this.lighterGroup.position.lerp(new THREE.Vector3(planePos.x - 0.144, planePos.y - 0.602, planePos.z + 0.038), 0.5);
                             this.lighterGroup.rotation.set(-0.15, -0.35, -0.25);
                         }
-                        if (this.fuseLight) {
-                            this.fuseLight.position.copy(this.lighterGroup.position);
-                            this.fuseLight.intensity = 2.4 + Math.random() * 0.4;
+                        if (this.fuseLight && this.lighterFlame) {
+                            const flameWorld = new THREE.Vector3();
+                            this.lighterFlame.getWorldPosition(flameWorld);
+                            this.fuseLight.position.copy(flameWorld);
+                            this.fuseLight.intensity = 2.6 + Math.random() * 0.4;
                         }
                         this.checkFuseContact(e.clientX, e.clientY);
                         return;
@@ -2570,15 +2705,64 @@
                     }
                 }
 
-                // Animate 3D Explosion Fireball
+                // Dynamic Organic Fire Flutter & Convective Turbulence Animation
+                const flameTime = performance.now() * 0.008;
+
+                if (this.isStickBurning && this.matchFlame) {
+                    const sY = (1.0 + Math.sin(flameTime * 5.2) * 0.15 + (Math.random() - 0.5) * 0.10);
+                    const sXZ = (1.0 + Math.cos(flameTime * 4.4) * 0.08 + (Math.random() - 0.5) * 0.06);
+                    this.matchFlame.scale.set(sXZ, sY, sXZ);
+                    this.matchFlame.rotation.z = Math.sin(flameTime * 3.6) * 0.14;
+                    this.matchFlame.rotation.x = Math.cos(flameTime * 4.0) * 0.10;
+                    if (this.matchFlame.userData && this.matchFlame.userData.light) {
+                        this.matchFlame.userData.light.intensity = 1.8 + Math.random() * 0.8;
+                    }
+                }
+
+                if (this.isLighterBurning && this.lighterFlame) {
+                    const sY = (1.0 + Math.sin(flameTime * 6.5) * 0.18 + (Math.random() - 0.5) * 0.12);
+                    const sXZ = (1.0 + Math.cos(flameTime * 5.2) * 0.10 + (Math.random() - 0.5) * 0.08);
+                    this.lighterFlame.scale.set(sXZ, sY, sXZ);
+                    this.lighterFlame.rotation.z = Math.sin(flameTime * 4.2) * 0.16;
+                    this.lighterFlame.rotation.x = Math.cos(flameTime * 4.8) * 0.12;
+                    if (this.lighterFlame.userData && this.lighterFlame.userData.light) {
+                        this.lighterFlame.userData.light.intensity = 2.0 + Math.random() * 0.9;
+                    }
+                }
+
+                // Animate 3D Explosion Fireball & Shrapnel
                 if (this.isBlasting && this.blastGroup) {
-                    this.blastProgress += 0.04;
-                    const scale = Math.sin(Math.min(1.0, this.blastProgress) * Math.PI) * 4.2;
+                    this.blastProgress += 0.038;
+                    const p = Math.min(1.0, this.blastProgress);
+                    const scale = Math.sin(p * Math.PI) * 4.6;
+
                     this.blastGroup.scale.set(scale, scale * 1.25, scale);
-                    this.blastGroup.rotation.y += 0.12;
+                    this.blastGroup.rotation.y += 0.14;
+
+                    const alpha = Math.max(0, 1.0 - p);
+                    if (this.blastCoreMat) this.blastCoreMat.opacity = alpha * 0.98;
+                    if (this.blastMidMat) this.blastMidMat.opacity = alpha * 0.88;
+                    if (this.blastOutMat) this.blastOutMat.opacity = alpha * 0.78;
+
+                    if (this.blastShock) {
+                        const shockScale = p * 12.0;
+                        this.blastShock.scale.set(shockScale, shockScale, shockScale);
+                        if (this.blastShockMat) this.blastShockMat.opacity = Math.max(0, 1.0 - p * 1.2);
+                    }
+
+                    if (this.blastFragments) {
+                        for (let f of this.blastFragments) {
+                            f.mesh.position.x += f.vx;
+                            f.mesh.position.y += f.vy;
+                            f.mesh.position.z += f.vz;
+                            f.vy -= 0.008;
+                            f.mesh.rotation.x += f.rotX;
+                            f.mesh.rotation.y += f.rotY;
+                        }
+                    }
 
                     if (this.fuseLight) {
-                        this.fuseLight.intensity = Math.max(0, (1 - this.blastProgress) * 15.0);
+                        this.fuseLight.intensity = Math.max(0, (1 - p) * 18.0);
                     }
 
                     if (this.blastProgress >= 1.0) {
@@ -2892,7 +3076,8 @@
         // 3D HIGH-DEFINITION CRACKER RENDERING ENGINE
         // ========================================================
         function drawCrackerStudio(groundY) {
-            const is3DActive = typeof studio3D !== 'undefined' && studio3D && (studio3D.isModelActive(currentCracker) || studio3D.isBlasting);
+            const is3DSection = typeof studio3D !== 'undefined' && studio3D && !!studio3D.modelConfigs[currentCracker];
+            const is3DActive = is3DSection && (studio3D.isModelActive(currentCracker) || (studio3D.isBlasting && currentCracker === 'bomb'));
             const cx = canvas.width / 2;
 
             if (!is3DActive) {
@@ -3807,7 +3992,8 @@
 
             const groundY = canvas.height - 35;
 
-            const is3DActive = typeof studio3D !== 'undefined' && studio3D && (studio3D.isModelActive(currentCracker) || studio3D.isBlasting);
+            const is3DSection = typeof studio3D !== 'undefined' && studio3D && !!studio3D.modelConfigs[currentCracker];
+            const is3DActive = is3DSection && (studio3D.isModelActive(currentCracker) || (studio3D.isBlasting && currentCracker === 'bomb'));
 
             if (is3DActive) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
