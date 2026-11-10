@@ -1553,11 +1553,27 @@
 
                 // Interactive Ignition Tools (Matchbox & Lighter)
                 this.activeTool = 'match';
+                this.isMatchboxOpen = false;
+                this.isStickBurning = false;
+                this.isLighterBurning = false;
+                this.isDraggingStick = false;
+                this.isDraggingLighter = false;
+                this.isRotatingModel = false;
+
                 this.matchboxGroup = null;
+                this.matchDrawer = null;
                 this.matchstickGroup = null;
                 this.matchFlame = null;
+                this.matchstickRestClosed = new THREE.Vector3(0.85, 0.03, 0.45);
+                this.matchstickRestOpen = new THREE.Vector3(0.80, 0.09, 0.58);
+                this.matchstickRotClosed = new THREE.Euler(-0.1, -0.45, 0.05);
+                this.matchstickRotOpen = new THREE.Euler(-0.25, -0.45, 0.35);
+
                 this.lighterGroup = null;
                 this.lighterFlame = null;
+                this.lighterRestPos = new THREE.Vector3(0.82, 0.02, 0.45);
+                this.lighterRestRot = new THREE.Euler(-0.1, -0.45, 0);
+
                 this.blastGroup = null;
                 this.isBlasting = false;
                 this.blastProgress = 0;
@@ -1792,12 +1808,14 @@
             loadActiveToolProps() {
                 if (this.activeTool === 'match') {
                     if (this.matchboxGroup) this.matchboxGroup.visible = true;
-                    if (this.matchstickGroup) this.matchstickGroup.visible = true;
+                    if (this.matchstickGroup) this.matchstickGroup.visible = this.isMatchboxOpen;
                     if (this.lighterGroup) this.lighterGroup.visible = false;
+                    this.extinguishLighter();
                 } else if (this.activeTool === 'lighter') {
                     if (this.matchboxGroup) this.matchboxGroup.visible = false;
                     if (this.matchstickGroup) this.matchstickGroup.visible = false;
                     if (this.lighterGroup) this.lighterGroup.visible = true;
+                    this.extinguishMatchstick();
                 }
             }
 
@@ -1820,6 +1838,12 @@
                         const scale = 0.52 / Math.max(bSize.x, bSize.z);
                         box.scale.setScalar(scale);
 
+                        // Find inner drawer - keep it CLOSED by default!
+                        this.matchDrawer = box.getObjectByName('Cube.002');
+                        if (this.matchDrawer) {
+                            this.matchDrawer.position.x = 0;
+                        }
+
                         this.matchboxGroup.add(box);
                         this.matchboxGroup.position.set(0.85, 0.02, 0.45);
                         this.matchboxGroup.rotation.set(-0.1, -0.45, 0.05);
@@ -1840,9 +1864,10 @@
                         stick.scale.setScalar(scale);
 
                         this.matchstickGroup.add(stick);
-                        this.matchstickGroup.position.set(0.82, 0.06, 0.55);
-                        this.matchstickGroup.rotation.set(-0.1, -0.45, 0.2);
-                        this.matchstickGroup.visible = (this.activeTool === 'match');
+                        this.matchstickGroup.position.copy(this.matchstickRestClosed);
+                        this.matchstickGroup.rotation.copy(this.matchstickRotClosed);
+                        // Hidden inside closed box initially!
+                        this.matchstickGroup.visible = false;
 
                         // Attach 3D Flame directly to the red match head
                         loader.load('models/flame.glb', (fGltf) => {
@@ -1876,8 +1901,8 @@
                         lighter.scale.setScalar(scale);
 
                         this.lighterGroup.add(lighter);
-                        this.lighterGroup.position.set(0.82, 0.02, 0.45);
-                        this.lighterGroup.rotation.set(-0.1, -0.45, 0);
+                        this.lighterGroup.position.copy(this.lighterRestPos);
+                        this.lighterGroup.rotation.copy(this.lighterRestRot);
                         this.lighterGroup.visible = (this.activeTool === 'lighter');
 
                         // Attach flame at lighter nozzle
@@ -1891,6 +1916,135 @@
                         this.scene.add(this.lighterGroup);
                     });
                 });
+            }
+
+            // Open Matchbox: Drawer slides out & matchstick emerges
+            openMatchbox() {
+                if (this.isMatchboxOpen) return;
+                this.isMatchboxOpen = true;
+                sfx.playMatchStrike();
+                haptic(25);
+
+                const duration = 280;
+                const start = performance.now();
+                const startDrawerX = this.matchDrawer ? this.matchDrawer.position.x : 0;
+                const targetDrawerX = 0.038;
+
+                if (this.matchstickGroup) {
+                    this.matchstickGroup.visible = true;
+                }
+
+                const animateOpen = (now) => {
+                    const elapsed = now - start;
+                    const p = Math.min(1.0, elapsed / duration);
+                    const ease = Math.sin((p * Math.PI) / 2);
+
+                    if (this.matchDrawer) {
+                        this.matchDrawer.position.x = startDrawerX + (targetDrawerX - startDrawerX) * ease;
+                    }
+                    if (this.matchstickGroup) {
+                        this.matchstickGroup.position.lerpVectors(this.matchstickRestClosed, this.matchstickRestOpen, ease);
+                        this.matchstickGroup.rotation.x = this.matchstickRotClosed.x + (this.matchstickRotOpen.x - this.matchstickRotClosed.x) * ease;
+                        this.matchstickGroup.rotation.y = this.matchstickRotClosed.y + (this.matchstickRotOpen.y - this.matchstickRotClosed.y) * ease;
+                        this.matchstickGroup.rotation.z = this.matchstickRotClosed.z + (this.matchstickRotOpen.z - this.matchstickRotClosed.z) * ease;
+                    }
+
+                    if (p < 1.0) {
+                        requestAnimationFrame(animateOpen);
+                    }
+                };
+                requestAnimationFrame(animateOpen);
+            }
+
+            // Close Matchbox: Matchstick retracts & drawer slides shut
+            closeMatchbox() {
+                if (!this.isMatchboxOpen) return;
+                this.isMatchboxOpen = false;
+                sfx.playMatchStrike();
+                haptic(15);
+                this.extinguishMatchstick();
+
+                const duration = 240;
+                const start = performance.now();
+                const startDrawerX = this.matchDrawer ? this.matchDrawer.position.x : 0.038;
+                const targetDrawerX = 0;
+
+                const animateClose = (now) => {
+                    const elapsed = now - start;
+                    const p = Math.min(1.0, elapsed / duration);
+                    const ease = Math.sin((p * Math.PI) / 2);
+
+                    if (this.matchDrawer) {
+                        this.matchDrawer.position.x = startDrawerX + (targetDrawerX - startDrawerX) * ease;
+                    }
+                    if (this.matchstickGroup) {
+                        this.matchstickGroup.position.lerpVectors(this.matchstickRestOpen, this.matchstickRestClosed, ease);
+                        this.matchstickGroup.rotation.x = this.matchstickRotOpen.x + (this.matchstickRotClosed.x - this.matchstickRotOpen.x) * ease;
+                        this.matchstickGroup.rotation.y = this.matchstickRotOpen.y + (this.matchstickRotClosed.y - this.matchstickRotOpen.y) * ease;
+                        this.matchstickGroup.rotation.z = this.matchstickRotOpen.z + (this.matchstickRotClosed.z - this.matchstickRotOpen.z) * ease;
+                    }
+
+                    if (p < 1.0) {
+                        requestAnimationFrame(animateClose);
+                    } else {
+                        if (this.matchstickGroup) {
+                            this.matchstickGroup.visible = false;
+                        }
+                    }
+                };
+                requestAnimationFrame(animateClose);
+            }
+
+            // Light Matchstick with fire
+            lightMatchstick() {
+                if (this.isStickBurning) return;
+                this.isStickBurning = true;
+                sfx.playMatchStrike();
+                sfx.playFlameCatch();
+                haptic(35);
+                if (this.matchFlame) {
+                    this.matchFlame.scale.set(0.09, 0.11, 0.09);
+                }
+                if (this.fuseLight) {
+                    this.fuseLight.intensity = 2.4;
+                    this.fuseLight.color.setHex(0xffaa22);
+                }
+            }
+
+            extinguishMatchstick() {
+                this.isStickBurning = false;
+                if (this.matchFlame) {
+                    this.matchFlame.scale.set(0.001, 0.001, 0.001);
+                }
+                if (!this.isLighterBurning && this.fuseLight && !isBurning) {
+                    this.fuseLight.intensity = 0;
+                }
+            }
+
+            // Light Lighter with fire
+            lightLighter() {
+                if (this.isLighterBurning) return;
+                this.isLighterBurning = true;
+                sfx.playMatchStrike();
+                sfx.playFlameCatch();
+                haptic(30);
+                if (this.lighterFlame) {
+                    this.lighterFlame.scale.set(0.10, 0.13, 0.10);
+                }
+                if (this.fuseLight) {
+                    this.fuseLight.intensity = 2.6;
+                    this.fuseLight.color.setHex(0xff8800);
+                }
+            }
+
+            extinguishLighter() {
+                this.isLighterBurning = false;
+                if (this.lighterFlame) {
+                    this.lighterFlame.scale.set(0.001, 0.001, 0.001);
+                }
+                if (!this.isStickBurning && this.fuseLight && !isBurning) {
+                    this.fuseLight.intensity = 0;
+                }
             }
 
             // 3. 3D EXPLOSION FIREBALL
@@ -1943,14 +2097,16 @@
                     if (btnM) btnM.classList.add('active');
                     if (btnL) btnL.classList.remove('active');
                     if (this.matchboxGroup) this.matchboxGroup.visible = true;
-                    if (this.matchstickGroup) this.matchstickGroup.visible = true;
+                    if (this.matchstickGroup) this.matchstickGroup.visible = this.isMatchboxOpen;
                     if (this.lighterGroup) this.lighterGroup.visible = false;
+                    this.extinguishLighter();
                 } else {
                     if (btnM) btnM.classList.remove('active');
                     if (btnL) btnL.classList.add('active');
                     if (this.matchboxGroup) this.matchboxGroup.visible = false;
                     if (this.matchstickGroup) this.matchstickGroup.visible = false;
                     if (this.lighterGroup) this.lighterGroup.visible = true;
+                    this.extinguishMatchstick();
                 }
                 haptic(15);
             }
@@ -1979,6 +2135,70 @@
                 };
             }
 
+            getToolScreenPos(type) {
+                if (!this.camera || !this.container) return { x: -999, y: -999 };
+                const v = new THREE.Vector3();
+                if (type === 'matchbox' && this.matchboxGroup) {
+                    v.set(0.85, 0.02, 0.45);
+                } else if (type === 'matchstick' && this.matchstickGroup) {
+                    this.matchstickGroup.getWorldPosition(v);
+                } else if (type === 'lighter' && this.lighterGroup) {
+                    v.set(0.82, 0.02, 0.45);
+                } else {
+                    return { x: -999, y: -999 };
+                }
+                v.project(this.camera);
+                const rect = this.container.getBoundingClientRect();
+                return {
+                    x: rect.left + ((v.x + 1) / 2) * rect.width,
+                    y: rect.top + ((-v.y + 1) / 2) * rect.height
+                };
+            }
+
+            getPointerWorldPos(clientX, clientY, targetZ = 0.45) {
+                if (!this.camera || !this.container) return new THREE.Vector3(0, 1, targetZ);
+                const rect = this.container.getBoundingClientRect();
+                const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+                const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersect);
+                return intersect || new THREE.Vector3(0, 1, targetZ);
+            }
+
+            // Check if burning matchstick or lighter is touching cracker fuse
+            checkFuseContact(clientX, clientY) {
+                if (isBurning) return;
+                const fuseWorld = this.getFuseWorldPos();
+                let dist3D = 999;
+                if (this.isDraggingStick && this.matchFlame) {
+                    const flameWorld = new THREE.Vector3();
+                    this.matchFlame.getWorldPosition(flameWorld);
+                    dist3D = flameWorld.distanceTo(fuseWorld);
+                } else if (this.isDraggingLighter && this.lighterFlame) {
+                    const flameWorld = new THREE.Vector3();
+                    this.lighterFlame.getWorldPosition(flameWorld);
+                    dist3D = flameWorld.distanceTo(fuseWorld);
+                }
+
+                const tipScreen = this.getCrackerTipScreenPos();
+                let distScreen = 999;
+                if (tipScreen) {
+                    const rect = this.container.getBoundingClientRect();
+                    const screenX = rect.left + tipScreen.x * (rect.width / canvas.width);
+                    const screenY = rect.top + tipScreen.y * (rect.height / canvas.height);
+                    distScreen = Math.hypot(clientX - screenX, clientY - screenY);
+                }
+
+                if (dist3D < 0.65 || distScreen < 75) {
+                    haptic(50);
+                    igniteCracker();
+                }
+            }
+
             strikeActiveTool(onIgnite) {
                 if (this.isStriking) return;
                 this.isStriking = true;
@@ -1986,84 +2206,23 @@
                 const fusePos = this.getFuseWorldPos();
 
                 if (this.activeTool === 'match' && this.matchstickGroup) {
-                    sfx.playMatchStrike();
-                    const startPos = this.matchstickGroup.position.clone();
-                    const startRot = this.matchstickGroup.rotation.clone();
-
-                    let step = 0;
-                    const strikeTimer = setInterval(() => {
-                        step++;
-                        this.matchstickGroup.position.x += 0.03;
-                        if (step >= 5) {
-                            clearInterval(strikeTimer);
-                            sfx.playFlameCatch();
-                            if (this.matchFlame) {
-                                this.matchFlame.scale.set(0.08, 0.09, 0.08);
-                            }
-                            if (this.fuseLight) {
-                                this.fuseLight.intensity = 2.0;
-                                this.fuseLight.position.set(this.matchstickGroup.position.x, this.matchstickGroup.position.y + 0.3, this.matchstickGroup.position.z);
-                            }
-
-                            const targetPos = new THREE.Vector3(fusePos.x + 0.15, fusePos.y, fusePos.z + 0.15);
-
-                            let glideStep = 0;
-                            const glideTimer = setInterval(() => {
-                                glideStep++;
-                                this.matchstickGroup.position.lerp(targetPos, 0.25);
-                                this.matchstickGroup.rotation.x = -0.3;
-                                this.matchstickGroup.rotation.z = 0.5;
-
-                                if (glideStep >= 12) {
-                                    clearInterval(glideTimer);
-                                    if (onIgnite) onIgnite();
-
-                                    setTimeout(() => {
-                                        let returnStep = 0;
-                                        const returnTimer = setInterval(() => {
-                                            returnStep++;
-                                            this.matchstickGroup.position.lerp(startPos, 0.22);
-                                            this.matchstickGroup.rotation.copy(startRot);
-                                            if (this.matchFlame) {
-                                                this.matchFlame.scale.multiplyScalar(0.85);
-                                            }
-                                            if (returnStep >= 12) {
-                                                clearInterval(returnTimer);
-                                                this.matchstickGroup.position.copy(startPos);
-                                                this.matchstickGroup.rotation.copy(startRot);
-                                                if (this.matchFlame) {
-                                                    this.matchFlame.scale.set(0.001, 0.001, 0.001);
-                                                }
-                                                this.isStriking = false;
-                                            }
-                                        }, 30);
-                                    }, 400);
-                                }
-                            }, 30);
-                        }
-                    }, 30);
-                } else if (this.lighterGroup) {
-                    sfx.playMatchStrike();
-                    const startPos = this.lighterGroup.position.clone();
-                    const startRot = this.lighterGroup.rotation.clone();
+                    if (!this.isMatchboxOpen) {
+                        this.openMatchbox();
+                    }
 
                     setTimeout(() => {
-                        sfx.playFlameCatch();
-                        if (this.lighterFlame) {
-                            this.lighterFlame.scale.set(0.09, 0.11, 0.09);
-                        }
-                        if (this.fuseLight) {
-                            this.fuseLight.intensity = 2.2;
-                            this.fuseLight.position.set(this.lighterGroup.position.x, this.lighterGroup.position.y + 0.4, this.lighterGroup.position.z);
-                        }
+                        this.lightMatchstick();
+                        const startPos = this.matchstickGroup.position.clone();
+                        const startRot = this.matchstickGroup.rotation.clone();
 
-                        const targetPos = new THREE.Vector3(fusePos.x + 0.12, fusePos.y - 0.45, fusePos.z + 0.15);
+                        const targetPos = new THREE.Vector3(fusePos.x + 0.15, fusePos.y, fusePos.z + 0.15);
 
                         let glideStep = 0;
                         const glideTimer = setInterval(() => {
                             glideStep++;
-                            this.lighterGroup.position.lerp(targetPos, 0.25);
-                            this.lighterGroup.rotation.z = -0.25;
+                            this.matchstickGroup.position.lerp(targetPos, 0.25);
+                            this.matchstickGroup.rotation.x = -0.3;
+                            this.matchstickGroup.rotation.z = 0.5;
 
                             if (glideStep >= 12) {
                                 clearInterval(glideTimer);
@@ -2073,25 +2232,60 @@
                                     let returnStep = 0;
                                     const returnTimer = setInterval(() => {
                                         returnStep++;
-                                        this.lighterGroup.position.lerp(startPos, 0.22);
-                                        this.lighterGroup.rotation.copy(startRot);
-                                        if (this.lighterFlame) {
-                                            this.lighterFlame.scale.multiplyScalar(0.85);
+                                        this.matchstickGroup.position.lerp(startPos, 0.22);
+                                        this.matchstickGroup.rotation.copy(startRot);
+                                        if (this.matchFlame) {
+                                            this.matchFlame.scale.multiplyScalar(0.85);
                                         }
                                         if (returnStep >= 12) {
                                             clearInterval(returnTimer);
-                                            this.lighterGroup.position.copy(startPos);
-                                            this.lighterGroup.rotation.copy(startRot);
-                                            if (this.lighterFlame) {
-                                                this.lighterFlame.scale.set(0.001, 0.001, 0.001);
-                                            }
+                                            this.matchstickGroup.position.copy(startPos);
+                                            this.matchstickGroup.rotation.copy(startRot);
+                                            this.extinguishMatchstick();
                                             this.isStriking = false;
                                         }
                                     }, 30);
                                 }, 400);
                             }
                         }, 30);
-                    }, 120);
+                    }, 280);
+                } else if (this.lighterGroup) {
+                    this.lightLighter();
+                    const startPos = this.lighterGroup.position.clone();
+                    const startRot = this.lighterGroup.rotation.clone();
+
+                    const targetPos = new THREE.Vector3(fusePos.x + 0.12, fusePos.y - 0.45, fusePos.z + 0.15);
+
+                    let glideStep = 0;
+                    const glideTimer = setInterval(() => {
+                        glideStep++;
+                        this.lighterGroup.position.lerp(targetPos, 0.25);
+                        this.lighterGroup.rotation.z = -0.25;
+
+                        if (glideStep >= 12) {
+                            clearInterval(glideTimer);
+                            if (onIgnite) onIgnite();
+
+                            setTimeout(() => {
+                                let returnStep = 0;
+                                const returnTimer = setInterval(() => {
+                                    returnStep++;
+                                    this.lighterGroup.position.lerp(startPos, 0.22);
+                                    this.lighterGroup.rotation.copy(startRot);
+                                    if (this.lighterFlame) {
+                                        this.lighterFlame.scale.multiplyScalar(0.85);
+                                    }
+                                    if (returnStep >= 12) {
+                                        clearInterval(returnTimer);
+                                        this.lighterGroup.position.copy(startPos);
+                                        this.lighterGroup.rotation.copy(startRot);
+                                        this.extinguishLighter();
+                                        this.isStriking = false;
+                                    }
+                                }, 30);
+                            }, 400);
+                        }
+                    }, 30);
                 } else {
                     if (onIgnite) onIgnite();
                     this.isStriking = false;
@@ -2104,36 +2298,6 @@
                 this.blastProgress = 0;
                 this.blastGroup.visible = true;
                 this.blastGroup.scale.set(0.1, 0.1, 0.1);
-            }
-
-            // SWITCH TO CRACKER SECTION: Lazy-loads model only when entering this section!
-            switchModel(key) {
-                this.currentKey = key;
-                this.reset();
-
-                for (const k in this.models) {
-                    if (this.models[k] && this.models[k].pivot) {
-                        this.models[k].pivot.visible = false;
-                    }
-                }
-
-                if (this.models[key]) {
-                    this.currentModel = this.models[key];
-                    this.currentModel.pivot.visible = true;
-                    this.currentModel.pivot.position.set(0, 0, 0);
-                    this.currentModel.pivot.rotation.y = this.models[key].baseRotY || 0;
-                    this.updateHudStatusReady();
-                } else if (this.modelConfigs[key]) {
-                    this.currentModel = null;
-                    const hudStatusText = document.getElementById('hudStatusText');
-                    if (hudStatusText && !isBurning) {
-                        hudStatusText.textContent = (currentLang === 'mr') ? '3D मॉडेल लोड होत आहे...' : ((currentLang === 'hi') ? '3D मॉडल लोड हो रहा है...' : 'LOADING 3D MODEL...');
-                    }
-                    this.loadModel(key);
-                } else {
-                    this.currentModel = null;
-                    this.updateHudStatusReady();
-                }
             }
 
             isModelActive(key) {
@@ -2167,17 +2331,16 @@
                 this.rocketSpeed = 0;
                 this.isBlasting = false;
                 this.isStriking = false;
+                this.isDraggingStick = false;
+                this.isDraggingLighter = false;
+                this.isRotatingModel = false;
+                this.extinguishMatchstick();
+                this.extinguishLighter();
                 if (this.fuseLight) {
                     this.fuseLight.intensity = 0;
                 }
                 if (this.blastGroup) {
                     this.blastGroup.visible = false;
-                }
-                if (this.matchFlame) {
-                    this.matchFlame.scale.set(0.001, 0.001, 0.001);
-                }
-                if (this.lighterFlame) {
-                    this.lighterFlame.scale.set(0.001, 0.001, 0.001);
                 }
                 if (this.currentModel && this.currentModel.pivot) {
                     this.currentModel.pivot.visible = true;
@@ -2187,41 +2350,197 @@
             }
 
             bindPointerEvents() {
-                const onStart = (cx) => {
-                    this.isDragging = true;
-                    this.prevPointerX = cx;
+                let downTime = 0;
+                let downX = 0;
+                let downY = 0;
+                let pendingAction = null;
+                this.isRotatingModel = false;
+                this.isDraggingStick = false;
+                this.isDraggingLighter = false;
+
+                const raycaster = new THREE.Raycaster();
+
+                const onPointerDown = (e) => {
+                    if (currentCracker === 'stick') return;
+                    downTime = performance.now();
+                    downX = e.clientX;
+                    downY = e.clientY;
                     this.autoRotate = false;
+                    this.prevPointerX = e.clientX;
+
+                    const rect = this.container.getBoundingClientRect();
+                    const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                    const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+
+                    if (this.activeTool === 'match') {
+                        const boxHits = this.matchboxGroup ? raycaster.intersectObjects(this.matchboxGroup.children, true) : [];
+                        const stickHits = (this.matchstickGroup && this.matchstickGroup.visible) ? raycaster.intersectObjects(this.matchstickGroup.children, true) : [];
+                        const boxScreen = this.getToolScreenPos('matchbox');
+                        const stickScreen = this.getToolScreenPos('matchstick');
+                        const distBox = Math.hypot(e.clientX - boxScreen.x, e.clientY - boxScreen.y);
+                        const distStick = Math.hypot(e.clientX - stickScreen.x, e.clientY - stickScreen.y);
+
+                        if (!this.isMatchboxOpen) {
+                            if (boxHits.length > 0 || distBox < 75) {
+                                pendingAction = 'toggleMatchbox';
+                                return;
+                            }
+                        } else {
+                            if (stickHits.length > 0 || distStick < 60) {
+                                pendingAction = 'dragStick';
+                                return;
+                            } else if (boxHits.length > 0 || distBox < 75) {
+                                pendingAction = 'boxOrStick';
+                                return;
+                            }
+                        }
+                    } else if (this.activeTool === 'lighter') {
+                        const lighterHits = this.lighterGroup ? raycaster.intersectObjects(this.lighterGroup.children, true) : [];
+                        const lighterScreen = this.getToolScreenPos('lighter');
+                        const distLighter = Math.hypot(e.clientX - lighterScreen.x, e.clientY - lighterScreen.y);
+
+                        if (lighterHits.length > 0 || distLighter < 80) {
+                            pendingAction = 'dragLighter';
+                            return;
+                        }
+                    }
+
+                    pendingAction = 'rotate';
+                    this.isRotatingModel = true;
                 };
 
-                const onMove = (cx) => {
-                    if (!this.isDragging || !this.currentModel || !this.currentModel.pivot) return;
-                    const dx = cx - this.prevPointerX;
-                    this.prevPointerX = cx;
-                    this.currentModel.pivot.rotation.y += dx * 0.009;
+                const onPointerMove = (e) => {
+                    if (currentCracker === 'stick') return;
+                    const moveDist = Math.hypot(e.clientX - downX, e.clientY - downY);
+
+                    if (pendingAction === 'toggleMatchbox') {
+                        if (moveDist > 12) {
+                            this.openMatchbox();
+                            pendingAction = 'dragStick';
+                        }
+                    } else if (pendingAction === 'boxOrStick') {
+                        if (moveDist > 8) {
+                            pendingAction = 'dragStick';
+                        }
+                    }
+
+                    if (pendingAction === 'dragStick') {
+                        if (!this.isDraggingStick) {
+                            this.isDraggingStick = true;
+                            this.lightMatchstick();
+                        }
+                        const planePos = this.getPointerWorldPos(e.clientX, e.clientY, 0.45);
+                        if (this.matchstickGroup) {
+                            this.matchstickGroup.position.lerp(new THREE.Vector3(planePos.x + 0.12, planePos.y, planePos.z + 0.15), 0.5);
+                            this.matchstickGroup.rotation.set(-0.25, 0.35, 0.65);
+                        }
+                        if (this.fuseLight) {
+                            this.fuseLight.position.copy(this.matchstickGroup.position);
+                            this.fuseLight.intensity = 2.2 + Math.random() * 0.4;
+                        }
+                        this.checkFuseContact(e.clientX, e.clientY);
+                        return;
+                    }
+
+                    if (pendingAction === 'dragLighter') {
+                        if (!this.isDraggingLighter) {
+                            this.isDraggingLighter = true;
+                            this.lightLighter();
+                        }
+                        const planePos = this.getPointerWorldPos(e.clientX, e.clientY, 0.45);
+                        if (this.lighterGroup) {
+                            this.lighterGroup.position.lerp(new THREE.Vector3(planePos.x + 0.08, planePos.y - 0.28, planePos.z + 0.15), 0.5);
+                            this.lighterGroup.rotation.set(-0.15, -0.35, -0.25);
+                        }
+                        if (this.fuseLight) {
+                            this.fuseLight.position.copy(this.lighterGroup.position);
+                            this.fuseLight.intensity = 2.4 + Math.random() * 0.4;
+                        }
+                        this.checkFuseContact(e.clientX, e.clientY);
+                        return;
+                    }
+
+                    if (this.isRotatingModel && this.currentModel && this.currentModel.pivot) {
+                        const dx = e.clientX - this.prevPointerX;
+                        this.prevPointerX = e.clientX;
+                        this.currentModel.pivot.rotation.y += dx * 0.009;
+                    }
                 };
 
-                const onEnd = () => {
-                    this.isDragging = false;
+                const onPointerUp = (e) => {
+                    const elapsed = performance.now() - downTime;
+                    const moveDist = Math.hypot(e.clientX - downX, e.clientY - downY);
+
+                    if (pendingAction === 'toggleMatchbox') {
+                        if (moveDist <= 12 && elapsed < 400) {
+                            this.openMatchbox();
+                        }
+                    } else if (pendingAction === 'boxOrStick') {
+                        if (moveDist <= 10 && elapsed < 400) {
+                            this.closeMatchbox();
+                        }
+                    }
+
+                    if (this.isDraggingStick) {
+                        this.isDraggingStick = false;
+                        const dur = 280;
+                        const sTime = performance.now();
+                        const curPos = this.matchstickGroup.position.clone();
+                        const curRot = this.matchstickGroup.rotation.clone();
+
+                        const animReturn = (now) => {
+                            const p = Math.min(1.0, (now - sTime) / dur);
+                            const ease = Math.sin((p * Math.PI) / 2);
+                            this.matchstickGroup.position.lerpVectors(curPos, this.matchstickRestOpen, ease);
+                            this.matchstickGroup.rotation.x = curRot.x + (this.matchstickRotOpen.x - curRot.x) * ease;
+                            this.matchstickGroup.rotation.y = curRot.y + (this.matchstickRotOpen.y - curRot.y) * ease;
+                            this.matchstickGroup.rotation.z = curRot.z + (this.matchstickRotOpen.z - curRot.z) * ease;
+                            if (p < 1.0) {
+                                requestAnimationFrame(animReturn);
+                            } else {
+                                setTimeout(() => this.extinguishMatchstick(), 1200);
+                            }
+                        };
+                        requestAnimationFrame(animReturn);
+                    }
+
+                    if (this.isDraggingLighter) {
+                        this.isDraggingLighter = false;
+                        const dur = 280;
+                        const sTime = performance.now();
+                        const curPos = this.lighterGroup.position.clone();
+                        const curRot = this.lighterGroup.rotation.clone();
+
+                        const animReturn = (now) => {
+                            const p = Math.min(1.0, (now - sTime) / dur);
+                            const ease = Math.sin((p * Math.PI) / 2);
+                            this.lighterGroup.position.lerpVectors(curPos, this.lighterRestPos, ease);
+                            this.lighterGroup.rotation.x = curRot.x + (this.lighterRestRot.x - curRot.x) * ease;
+                            this.lighterGroup.rotation.y = curRot.y + (this.lighterRestRot.y - curRot.y) * ease;
+                            this.lighterGroup.rotation.z = curRot.z + (this.lighterRestRot.z - curRot.z) * ease;
+                            if (p < 1.0) {
+                                requestAnimationFrame(animReturn);
+                            } else {
+                                setTimeout(() => this.extinguishLighter(), 1200);
+                            }
+                        };
+                        requestAnimationFrame(animReturn);
+                    }
+
+                    pendingAction = null;
+                    this.isRotatingModel = false;
                     clearTimeout(this.idleTimer);
                     this.idleTimer = setTimeout(() => {
                         this.autoRotate = true;
                     }, 2400);
                 };
 
-                this.container.addEventListener('pointerdown', (e) => {
-                    if (currentCracker !== 'stick') {
-                        onStart(e.clientX);
-                    }
-                });
-
-                window.addEventListener('pointermove', (e) => {
-                    if (currentCracker !== 'stick' && this.isDragging) {
-                        onMove(e.clientX);
-                    }
-                });
-
-                window.addEventListener('pointerup', onEnd);
-                window.addEventListener('pointercancel', onEnd);
+                this.container.addEventListener('pointerdown', onPointerDown);
+                window.addEventListener('pointermove', onPointerMove);
+                window.addEventListener('pointerup', onPointerUp);
+                window.addEventListener('pointercancel', onPointerUp);
             }
 
             animate() {
@@ -2271,6 +2590,10 @@
                 // Dynamic Fuse Light Flicker
                 if (this.fuseLight && isBurning && !bombExploded && !this.isBlasting) {
                     this.fuseLight.intensity = 1.8 + Math.random() * 1.5;
+                } else if (this.isStickBurning) {
+                    if (this.fuseLight) this.fuseLight.intensity = 2.0 + Math.random() * 0.6;
+                } else if (this.isLighterBurning) {
+                    if (this.fuseLight) this.fuseLight.intensity = 2.3 + Math.random() * 0.7;
                 } else if (!this.isBlasting && !this.isStriking) {
                     if (this.fuseLight) this.fuseLight.intensity = 0;
                 }
